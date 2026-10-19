@@ -1,0 +1,23 @@
+@startuml
+title Activity Diagram - UC-H: Melihat Dashboard Prioritas Infrastruktur
+
+|Admin|
+start
+:Membuka halaman Dashboard;
+
+|Sistem|
+:Menampilkan peta sebaran kerusakan dengan gradasi warna sesuai severity;
+:Menampilkan ringkasan zona risiko dan daftar tiket terurut berdasarkan prioritas;
+
+|Admin|
+:Menerapkan filter (kategori, status, wilayah) via Map Legend & Filters;
+
+|Sistem|
+if (Ada data sesuai filter?) then (Tidak)
+  :Menampilkan pesan "Tidak ada laporan sesuai filter";
+  stop
+else (Ya)
+  :Menampilkan hasil sesuai filter pada peta dan daftar tiket;
+  stop
+endif
+@enduml

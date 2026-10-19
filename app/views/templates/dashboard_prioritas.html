@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Prioritas Infrastruktur & Peta GIS - SCMS PUPR</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Leaflet.js CSS & JS untuk Peta Interaktif Geospasial (REQ-DSH-1) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        #mapSurabaya { height: 420px; width: 100%; z-index: 10; }
+    </style>
+</head>
+<body class="bg-[#F8FAFC] text-slate-800 min-h-screen flex flex-col">
+
+    <!-- HEADER UTAMA -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+        <div class="max-w-[1360px] mx-auto px-6 py-3 flex items-center justify-between">
+            <div class="flex items-center space-x-3.5">
+                <img src="/static/images/logo.png" alt="Logo SCMS PUPR" class="w-10 h-10 object-contain" onerror="this.outerHTML='<div class=\'w-10 h-10 rounded-lg bg-[#0B5ED7] text-white flex items-center justify-center font-bold text-xs\'>SCMS</div>'">
+                <div>
+                    <h1 class="font-extrabold text-slate-900 text-[16px] tracking-tight leading-snug">PUPR Kota Surabaya – SCMS</h1>
+                    <p class="text-[11px] text-slate-500 flex items-center gap-1.5 font-medium">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+                        Portal Internal PPK & Pengawas Teknis Lapangan • Live Sync GIS
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-3">
+                <a href="/Dashboard" class="hidden md:flex items-center space-x-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs px-3.5 py-2 rounded-lg transition">
+                    <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    <span>Muat Ulang Telemetri</span>
+                </a>
+                <div class="flex items-center space-x-2.5 pl-2 border-l border-slate-200">
+                    <div class="w-9 h-9 rounded-full bg-[#0F2942] text-white flex items-center justify-center font-bold text-xs relative">
+                        HK
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white absolute bottom-0 right-0"></span>
+                    </div>
+                    <div class="hidden lg:block leading-tight">
+                        <p class="text-xs font-bold text-slate-800">Ir. Hendra Kusuma, S.T., M.Eng.</p>
+                        <p class="text-[10px] text-slate-500">PPK Bina Marga & Jembatan</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="max-w-[1360px] mx-auto px-6 flex items-center space-x-7 text-xs font-semibold text-slate-600 overflow-x-auto border-t border-slate-100">
+            <a href="/Dashboard" class="py-3 text-[#0B5ED7] border-b-2 border-[#0B5ED7] flex items-center space-x-1.5 whitespace-nowrap">
+                <span>Dashboard Prioritas & Peta GIS (UC-H)</span>
+            </a>
+        </div>
+    </header>
+
+    <!-- KONTEN UTAMA -->
+    <main class="max-w-[1360px] mx-auto px-6 py-6 flex-grow w-full">
+
+        <!-- JUDUL & KONTEKS OPERASIONAL -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+            <div>
+                <span class="inline-block bg-blue-50 text-[#0B5ED7] border border-blue-200 text-[10px] font-extrabold px-2.5 py-0.5 rounded uppercase mb-1">
+                    SIAP-PUPR KOTA SURABAYA
+                </span>
+                <h2 class="text-2xl font-extrabold text-slate-900 tracking-tight">Monitoring Operasional & Dashboard Prioritas Infrastruktur</h2>
+                <p class="text-xs text-slate-500 mt-0.5">Sebaran geospasial kerusakan jalan dan antrean prioritas penanganan berdasarkan perhitungan Risk Score otomatis.</p>
+            </div>
+            <div class="flex gap-2">
+                <a href="/Dashboard?wilayah=Wonokromo&status=Selesai&kategori=Drainase" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-semibold px-3.5 py-2 rounded-lg transition">
+                    Simulasi Skenario Filter Kosong
+                </a>
+                <a href="/Dashboard" class="bg-[#0B5ED7] hover:bg-blue-700 text-white text-xs font-semibold px-3.5 py-2 rounded-lg transition">
+                    Tampilkan Semua Data
+                </a>
+            </div>
+        </div>
+
+        <!-- 4 KARTU KPI OPERASIONAL (REQ-DSH-3 & MOCKUP GAMBAR 3) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs font-semibold text-slate-500 uppercase">Total Work Order Aktif</span>
+                    <div class="w-8 h-8 rounded-lg bg-blue-50 text-[#0B5ED7] flex items-center justify-center">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    </div>
+                </div>
+                <p class="text-3xl font-extrabold text-slate-900 mt-2">245 <span class="text-xs font-normal text-slate-500">Total Kota ({{ total_aduan }} Sampel Uji)</span></p>
+                <p class="text-[11px] text-emerald-600 font-semibold mt-2">Terintegrasi AI Risk Engine</p>
+            </div>
+
+            <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs font-semibold text-slate-500 uppercase">Prioritas Darurat (Urgent)</span>
+                    <div class="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                    </div>
+                </div>
+                <p class="text-3xl font-extrabold text-red-600 mt-2">{{ kasus_darurat }} <span class="text-xs font-semibold text-red-600">Tiket Kritis</span></p>
+                <p class="text-[11px] text-slate-500 mt-2">Risk Score &ge; 8.0 (SLA Respons Cepat)</p>
+            </div>
+
+            <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs font-semibold text-slate-500 uppercase">Kasus Dalam Penanganan</span>
+                    <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                </div>
+                <p class="text-3xl font-extrabold text-amber-600 mt-2">{{ kasus_ditangani }} <span class="text-xs font-semibold text-amber-700">Menunggu / Proses</span></p>
+                <p class="text-[11px] text-slate-500 mt-2">Eksekusi Satgas Rayon Surabaya</p>
+            </div>
+
+            <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs font-semibold text-slate-500 uppercase">Tingkat Penyelesaian (SLA)</span>
+                    <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                </div>
+                <p class="text-3xl font-extrabold text-emerald-600 mt-2">94.2% <span class="text-xs font-semibold text-slate-500">({{ kasus_selesai }} Tuntas)</span></p>
+                <p class="text-[11px] text-emerald-700 font-semibold mt-2">Memenuhi Kuota Standar Pelayanan PU</p>
+            </div>
+        </div>
+
+        <!-- BAR FILTER PETA & ANTREAN PRIORITAS (REQ-DSH-4) -->
+        <form method="get" action="/Dashboard" class="bg-white rounded-xl border border-slate-200 p-4 mb-6 shadow-sm">
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-600 mb-1">Filter Wilayah Rayon</label>
+                    <select name="wilayah" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-semibold text-slate-800 bg-white">
+                        <option value="Semua">Semua Wilayah Rayon</option>
+                        {% for w in daftar_wilayah %}
+                        <option value="{{ w.nama_wilayah }}" {% if filter_wilayah == w.nama_wilayah %}selected{% endif %}>{{ w.nama_wilayah }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-600 mb-1">Filter Status Penanganan</label>
+                    <select name="status" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-semibold text-slate-800 bg-white">
+                        <option value="Semua">Semua Status</option>
+                        {% for st in ["Dilaporkan", "Disetujui", "Menunggu Penugasan", "Ditugaskan", "Selesai"] %}
+                        <option value="{{ st }}" {% if filter_status == st %}selected{% endif %}>{{ st }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-600 mb-1">Filter Kategori Infrastruktur</label>
+                    <select name="kategori" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-semibold text-slate-800 bg-white">
+                        <option value="Semua">Semua Kategori</option>
+                        {% for kat in ["Jalan Berlubang", "Jalan Amblas", "Drainase", "PJU"] %}
+                        <option value="{{ kat }}" {% if filter_kategori == kat %}selected{% endif %}>{{ kat }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="flex gap-2">
+                    <button type="submit" class="bg-[#0B5ED7] hover:bg-blue-700 text-white font-bold text-xs px-4 py-2 rounded-lg flex-1 transition">
+                        Terapkan Parameter
+                    </button>
+                    <a href="/Dashboard" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-3.5 py-2 rounded-lg transition">
+                        Reset
+                    </a>
+                </div>
+            </div>
+        </form>
+
+        <!-- GRID UTAMA: PETA GEOSPASIAL SURABAYA (KIRI) & RINGKASAN ZONA RISIKO (KANAN) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
+            <!-- Peta Sebaran Kerusakan dengan Gradasi Warna Severity (REQ-DSH-1) -->
+            <div class="lg:col-span-8 bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <h3 class="font-bold text-slate-900 text-sm">Peta Geospasial Sebaran Kerusakan Infrastruktur Surabaya</h3>
+                        <p class="text-[11px] text-slate-500">Menampilkan radius konsentrasi dan gradasi warna berdasarkan tingkat keparahan (Severity & Risk Score).</p>
+                    </div>
+                    <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-extrabold px-2.5 py-1 rounded">
+                        GIS Aktif • Leaflet.js
+                    </span>
+                </div>
+
+                <div id="mapSurabaya" class="rounded-xl border border-slate-200 overflow-hidden"></div>
+
+                <!-- Legenda & Simbologi GIS (REQ-DSH-1) -->
+                <div class="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <span class="font-bold text-slate-700">Legenda Gradasi Warna Severity:</span>
+                    <div class="flex flex-wrap items-center gap-4">
+                        <span class="flex items-center gap-1.5 font-semibold text-slate-700">
+                            <span class="w-3 h-3 rounded-full bg-red-600 inline-block"></span> Darurat / Urgent (Risk &ge; 8.0)
+                        </span>
+                        <span class="flex items-center gap-1.5 font-semibold text-slate-700">
+                            <span class="w-3 h-3 rounded-full bg-orange-600 inline-block"></span> Prioritas Tinggi (6.0 - 7.9)
+                        </span>
+                        <span class="flex items-center gap-1.5 font-semibold text-slate-700">
+                            <span class="w-3 h-3 rounded-full bg-amber-500 inline-block"></span> Sedang / Borderline (&lt; 6.0)
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel Ringkasan Zona Risiko Wilayah (REQ-DSH-3) -->
+            <div class="lg:col-span-4 bg-white rounded-xl border border-slate-200 p-5 shadow-sm flex flex-col justify-between">
+                <div>
+                    <h3 class="font-bold text-slate-900 text-sm mb-1">Ringkasan Zona Risiko Rayon</h3>
+                    <p class="text-[11px] text-slate-500 mb-4">Komparasi beban laporan masuk dan tingkat penyelesaian per wilayah rayon kerja.</p>
+
+                    <div class="space-y-4 text-xs">
+                        <div>
+                            <div class="flex justify-between font-bold text-slate-800 mb-1">
+                                <span>Wilayah Gubeng (Surabaya Timur)</span>
+                                <span class="text-red-600">Zona Risiko Tinggi</span>
+                            </div>
+                            <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                <div class="bg-red-600 h-full rounded-full" style="width: 85%"></div>
+                            </div>
+                            <p class="text-[11px] text-slate-500 mt-1">Tiket Tertinggi: <strong>REP-2026-00341 (8.4)</strong></p>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between font-bold text-slate-800 mb-1">
+                                <span>Wilayah Benowo (Surabaya Barat)</span>
+                                <span class="text-orange-600">Zona Risiko Menengah</span>
+                            </div>
+                            <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                <div class="bg-orange-500 h-full rounded-full" style="width: 68%"></div>
+                            </div>
+                            <p class="text-[11px] text-slate-500 mt-1">Tiket Aktif: <strong>REP-2026-00360 (7.5)</strong></p>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between font-bold text-slate-800 mb-1">
+                                <span>Wonokromo (Surabaya Selatan)</span>
+                                <span class="text-emerald-600">Terkendali</span>
+                            </div>
+                            <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                <div class="bg-emerald-500 h-full rounded-full" style="width: 35%"></div>
+                            </div>
+                            <p class="text-[11px] text-slate-500 mt-1">Kepatuhan SLA: 95.8%</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600">
+                    <p class="font-bold text-slate-800 mb-0.5">Rumus Prioritisasi Otomatis (BR-2):</p>
+                    <p>Risk Score = Severity &times; Exposure &times; Vulnerability &times; Criticality</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- TABEL ANTREAN PRIORITAS TERURUT RISK SCORE TERTINGGI (REQ-DSH-2 & REQ-DSH-5) -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-200 flex justify-between items-center">
+                <div>
+                    <h3 class="font-bold text-slate-900 text-sm">Antrean Prioritas Penanganan Insiden (Priority Queue)</h3>
+                    <p class="text-[11px] text-slate-500">Daftar tiket diurutkan otomatis dari Risk Score tertinggi beserta aksi cepat Admin.</p>
+                </div>
+                <span class="bg-blue-50 text-[#0B5ED7] border border-blue-200 text-xs font-bold px-2.5 py-1 rounded">
+                    Terurut Risk Score Tertinggi
+                </span>
+            </div>
+
+            {% if pesan_kosong %}
+            <!-- PESAN KETIKA FILTER TIDAK MENGHASILKAN DATA (SKENARIO 2 BDD UC-H) -->
+            <div class="p-10 text-center">
+                <div class="w-12 h-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-3">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </div>
+                <p class="text-base font-extrabold text-slate-900">{{ pesan_kosong }}</p>
+                <p class="text-xs text-slate-500 mt-1">Filter aktif: Wilayah={{ filter_wilayah }}, Status={{ filter_status }}, Kategori={{ filter_kategori }}</p>
+                <a href="/Dashboard" class="inline-block mt-4 bg-[#0B5ED7] text-white text-xs font-bold px-4 py-2 rounded-lg">Reset Filter</a>
+            </div>
+            {% else %}
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                            <th class="py-3 px-4">Risk Score & Prioritas</th>
+                            <th class="py-3 px-4">Nomor Tiket (ID)</th>
+                            <th class="py-3 px-4">Kategori & Lokasi</th>
+                            <th class="py-3 px-4">Wilayah</th>
+                            <th class="py-3 px-4">Status Tiket</th>
+                            <th class="py-3 px-4 text-right">Aksi Cepat (REQ-DSH-5)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 text-xs">
+                        {% for item in daftar_tiket %}
+                        <tr class="hover:bg-slate-50/80 transition">
+                            <td class="py-3.5 px-4">
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-base font-extrabold text-slate-900">{{ item.wo.risk_score }}</span>
+                                    {% if item.wo.prioritas in ['Urgent', 'Darurat'] %}
+                                        <span class="bg-red-100 text-red-700 border border-red-200 text-[10px] font-extrabold px-2 py-0.5 rounded uppercase">
+                                            {{ item.wo.prioritas }}
+                                        </span>
+                                    {% elif item.wo.prioritas == 'Tinggi' %}
+                                        <span class="bg-orange-100 text-orange-800 border border-orange-200 text-[10px] font-extrabold px-2 py-0.5 rounded uppercase">
+                                            {{ item.wo.prioritas }}
+                                        </span>
+                                    {% else %}
+                                        <span class="bg-amber-100 text-amber-900 border border-amber-200 text-[10px] font-extrabold px-2 py-0.5 rounded uppercase">
+                                            {{ item.wo.prioritas }}
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td class="py-3.5 px-4 font-extrabold text-[#0B5ED7]">
+                                {{ item.label_skor }}
+                            </td>
+                            <td class="py-3.5 px-4">
+                                <div class="font-bold text-slate-800">{{ item.wo.kategori_kerusakan }}</div>
+                                <div class="text-[11px] text-slate-500">{{ item.wo.lokasi_jalan }}</div>
+                            </td>
+                            <td class="py-3.5 px-4 font-semibold text-slate-700">
+                                {{ item.nama_wilayah }}
+                            </td>
+                            <td class="py-3.5 px-4">
+                                <span class="inline-block bg-slate-100 text-slate-800 font-bold text-[11px] px-2.5 py-1 rounded">
+                                    {{ item.wo.status_work_order }}
+                                </span>
+                            </td>
+                            <td class="py-3.5 px-4 text-right space-x-1.5 whitespace-nowrap">
+                                <button class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-[11px] px-2.5 py-1.5 rounded-lg">
+                                    Lihat Detail
+                                </button>
+                                <button class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] px-2.5 py-1.5 rounded-lg">
+                                    Setujui
+                                </button>
+                                <button class="bg-[#0B5ED7] hover:bg-blue-700 text-white font-semibold text-[11px] px-2.5 py-1.5 rounded-lg">
+                                    Tugaskan
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </div>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-white border-t border-slate-200 py-4 px-6 mt-10">
+        <div class="max-w-[1360px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-500">
+            <span>&copy; 2026 Dinas Sumber Daya Air dan Bina Marga Kota Surabaya.</span>
+            <span class="font-semibold text-slate-600">Kelompok 7 — Kelas I3</span>
+        </div>
+    </footer>
+
+    <!-- SCRIPT PETA GEOSPASIAL LEAFLET.JS DENGAN TITIK SPESIFIK & RADIUS KECIL -->
+    <script>
+        // Fokus awal peta di tengah Kota Surabaya
+        var map = L.map('mapSurabaya').setView([-7.2655, 112.7470], 14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors — GIS SCMS PUPR Surabaya'
+        }).addTo(map);
+
+        var daftarTiket = [
+            {% for item in daftar_tiket %}
+            {
+                id: "{{ item.wo.id_work_order }}",
+                label: "{{ item.label_skor }}",
+                kategori: "{{ item.wo.kategori_kerusakan }}",
+                lokasi: "{{ item.wo.lokasi_jalan }}",
+                prioritas: "{{ item.wo.prioritas }}",
+                lat: {{ item.lat }},
+                lng: {{ item.lng }},
+                warna: "{{ item.warna_marker }}"
+            },
+            {% endfor %}
+        ];
+
+        daftarTiket.forEach(function(t) {
+            // 1. Lingkaran radius dampak lokal di badan jalan (40 meter, bukan 650 meter!)
+            L.circle([t.lat, t.lng], {
+                color: t.warna,
+                weight: 1,
+                fillColor: t.warna,
+                fillOpacity: 0.20,
+                radius: 40
+            }).addTo(map);
+
+            // 2. Titik Pin Inti yang spesifik tepat di koordinat kerusakan jalan
+            L.circleMarker([t.lat, t.lng], {
+                radius: 8,
+                color: "#FFFFFF",
+                weight: 2,
+                fillColor: t.warna,
+                fillOpacity: 1.0
+            }).addTo(map).bindPopup(
+                "<div style='font-family: Inter, sans-serif; font-size: 12px;'>" +
+                "<strong style='color: #0F172A;'>" + t.label + "</strong><br>" +
+                "<span style='color: #0B5ED7; font-weight: 600;'>" + t.kategori + "</span><br>" +
+                "<span style='color: #475569;'>" + t.lokasi + "</span><br>" +
+                "<span style='font-size: 10px; font-weight: 700; color: " + t.warna + ";'>Prioritas: " + t.prioritas + "</span>" +
+                "</div>"
+            );
+        });
+    </script>
+
+</body>
+</html>

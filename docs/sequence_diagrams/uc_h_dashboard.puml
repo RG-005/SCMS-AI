@@ -1,0 +1,27 @@
+@startuml
+title UC-H - Melihat Dashboard Prioritas Infrastruktur
+
+actor Admin
+boundary DashboardAdmin
+control KontrolDashboard
+
+Admin -> DashboardAdmin : 1. buka dashboard
+activate DashboardAdmin
+DashboardAdmin -> KontrolDashboard : 1.1 muatDashboard()
+activate KontrolDashboard
+KontrolDashboard --> DashboardAdmin : 1.1.1 peta + antrean prioritas
+deactivate KontrolDashboard
+
+Admin -> DashboardAdmin : 2. terapkan filter
+DashboardAdmin -> KontrolDashboard : 2.1 filter(kategori, status, wilayah)
+activate KontrolDashboard
+
+alt Filter ada data
+    KontrolDashboard --> DashboardAdmin : 2.2 hasil filter
+else Kosong
+    KontrolDashboard --> DashboardAdmin : 2.2 "Tidak ada laporan sesuai filter"
+end
+
+deactivate KontrolDashboard
+deactivate DashboardAdmin
+@enduml
