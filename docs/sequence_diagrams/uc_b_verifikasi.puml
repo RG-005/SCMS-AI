@@ -1,0 +1,39 @@
+@startuml
+title UC-B - Memverifikasi Laporan
+
+actor Admin
+boundary DashboardAdmin
+control KontrolVerifikasi
+entity WorkOrder
+
+Admin -> DashboardAdmin : 1. buka antrean
+activate DashboardAdmin
+DashboardAdmin -> KontrolVerifikasi : 1.1 muatTiket()
+activate KontrolVerifikasi
+KontrolVerifikasi --> DashboardAdmin : 1.1.1 daftar tiket terurut risk_score
+deactivate KontrolVerifikasi
+
+Admin -> DashboardAdmin : 2. "Setujui Tiket"
+DashboardAdmin -> KontrolVerifikasi : 2.1 setujui()
+activate KontrolVerifikasi
+KontrolVerifikasi -> WorkOrder : 2.1.1 setStatus("Disetujui")
+activate WorkOrder
+WorkOrder --> KontrolVerifikasi : 2.1.2 status tersimpan
+deactivate WorkOrder
+
+alt Borderline -> inspeksi
+    KontrolVerifikasi -> WorkOrder : 3. setStatus("Menunggu Inspeksi")
+    activate WorkOrder
+    WorkOrder --> KontrolVerifikasi : 3.1 status tersimpan
+    deactivate WorkOrder
+else Tanpa inspeksi
+    KontrolVerifikasi -> WorkOrder : 3.1 setStatus("Disetujui")
+    activate WorkOrder
+    WorkOrder --> KontrolVerifikasi : 3.2 status tersimpan
+    deactivate WorkOrder
+end
+
+KontrolVerifikasi --> DashboardAdmin : 4. proses verifikasi selesai
+deactivate KontrolVerifikasi
+deactivate DashboardAdmin
+@enduml

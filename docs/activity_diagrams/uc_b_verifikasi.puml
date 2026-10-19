@@ -1,0 +1,40 @@
+@startuml
+title Activity Diagram - UC-B: Memverifikasi Laporan
+
+|Admin|
+start
+:Membuka dashboard;
+
+|Sistem|
+:Menampilkan daftar tiket (Work Order) terurut berdasarkan Risk Score;
+
+|Admin|
+:Memilih dan meninjau detail satu tiket;
+
+|Sistem|
+:Menampilkan detail tiket: foto, severity score, risk score, lokasi;
+
+if (Risk Score berada di rentang ambigu/borderline?) then (Ya)
+  :Menampilkan opsi "Butuh Verifikasi Lapangan";
+  |Admin|
+  if (Tugaskan inspeksi tambahan?) then (Ya)
+    :Memilih Penilik Jalan yang akan mengecek lokasi;
+    |Sistem|
+    :Mengirim penugasan inspeksi ke Penilik Jalan;
+    :Mengubah status tiket menjadi "Menunggu Inspeksi";
+    stop
+  else (Tidak)
+    |Sistem|
+    :Mencatat keputusan sebagai log keputusan manual;
+  endif
+else (Tidak)
+endif
+
+|Admin|
+:Menekan tombol "Setujui Tiket";
+
+|Sistem|
+:Mengubah status tiket menjadi "Disetujui";
+:Menambahkan tiket ke antrean penugasan Penilik Jalan;
+stop
+@enduml

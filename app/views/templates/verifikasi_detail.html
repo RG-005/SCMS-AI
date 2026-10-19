@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detail Laporan & Verifikasi AI - SCMS PUPR Kota Surabaya</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-[#F8FAFC] text-slate-800 min-h-screen flex flex-col">
+
+    <!-- HEADER UTAMA -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-20">
+        <div class="max-w-[1360px] mx-auto px-6 py-3 flex items-center justify-between">
+            <div class="flex items-center space-x-3.5">
+                <img src="/static/images/logo.png" alt="Logo SCMS PUPR" class="w-10 h-10 object-contain" onerror="this.outerHTML='<div class=\'w-10 h-10 rounded-lg bg-[#0B5ED7] text-white flex items-center justify-center font-bold text-xs\'>SCMS</div>'">
+                <div>
+                    <h1 class="font-extrabold text-slate-900 text-[16px] tracking-tight leading-snug">PUPR Kota Surabaya – SCMS</h1>
+                    <p class="text-[11px] text-slate-500 flex items-center gap-1.5 font-medium">
+                        <span class="w-2 h-2 rounded-full bg-[#0B5ED7] inline-block"></span>
+                        Smart Infrastructure Monitoring & Dispatch System
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-3">
+                <div class="flex items-center space-x-2.5 pl-1">
+                    <div class="w-9 h-9 rounded-full bg-[#0F2942] text-white flex items-center justify-center font-bold text-xs relative">
+                        HK
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white absolute bottom-0 right-0"></span>
+                    </div>
+                    <div class="hidden lg:block leading-tight">
+                        <p class="text-xs font-bold text-slate-800">Ir. Hendra Kusuma, S.T., M.Eng.</p>
+                        <p class="text-[10px] text-slate-500">Admin / PPK Fisik • NIP 197804152003121004</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="max-w-[1360px] mx-auto px-6 flex items-center space-x-7 text-xs font-semibold text-slate-600 overflow-x-auto border-t border-slate-100">
+            <a href="/verifikasi" class="py-3 text-[#0B5ED7] border-b-2 border-[#0B5ED7] flex items-center space-x-1.5 whitespace-nowrap">
+                <span>Detail Laporan & Verifikasi (UC-B)</span>
+            </a>
+        </div>
+    </header>
+
+    <!-- KONTEN UTAMA -->
+    <main class="max-w-[1360px] mx-auto px-6 py-6 flex-grow w-full">
+
+        <!-- PEMILIH TIKET ANTREAN (MEMUDAHKAN PENGUJIAN SKENARIO 1 s/d 4 UC-B) -->
+        <div class="bg-white rounded-xl border border-slate-200 p-4 mb-6 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="text-xs font-bold text-slate-700 mr-2">Pilih Tiket Antrean:</span>
+                {% for item in semua_tiket %}
+                <a href="/verifikasi?ticket_id={{ item.id_work_order }}"
+                   class="px-3.5 py-1.5 rounded-lg text-xs font-bold border transition {% if detail.wo.id_work_order == item.id_work_order %}bg-[#0B5ED7] text-white border-[#0B5ED7]{% else %}bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100{% endif %}">
+                    {{ item.id_work_order }} — Risk Score: {{ item.risk_score }} ({{ item.prioritas }})
+                </a>
+                {% endfor %}
+            </div>
+            <span class="text-[11px] text-slate-400 font-medium">Terurut Berdasarkan Risk Score Tertinggi</span>
+        </div>
+
+        <!-- PESAN KONFIRMASI AKSI -->
+        {% if pesan_sukses %}
+        <div class="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex items-center justify-between shadow-sm">
+            <div class="flex items-center space-x-3">
+                <div class="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                </div>
+                <div>
+                    <p class="font-bold text-xs">Keputusan Verifikasi Tersimpan</p>
+                    <p class="text-xs text-emerald-800 mt-0.5">{{ pesan_sukses }}</p>
+                </div>
+            </div>
+            <a href="/verifikasi?ticket_id={{ detail.wo.id_work_order }}" class="text-xs font-semibold text-emerald-800 hover:underline">Tutup</a>
+        </div>
+        {% endif %}
+
+        <!-- HEADER TIKET & TOMBOL "Setujui Tiket" (SKENARIO 1 UC-B) -->
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6 pb-5 border-b border-slate-200">
+            <div>
+                <div class="flex flex-wrap items-center gap-2 mb-2">
+                    <span class="bg-slate-900 text-white text-xs font-extrabold px-2.5 py-1 rounded">{{ detail.wo.id_work_order }}</span>
+                    <span class="bg-blue-50 text-[#0B5ED7] border border-blue-200 text-xs font-bold px-2.5 py-1 rounded">
+                        Status: {{ detail.wo.status_work_order }}
+                    </span>
+                    {% if detail.is_ambiguous %}
+                    <span class="bg-amber-100 text-amber-900 border border-amber-300 text-xs font-extrabold px-2.5 py-1 rounded">
+                        {{ detail.opsi_verifikasi }}
+                    </span>
+                    {% endif %}
+                </div>
+                <h2 class="text-2xl font-extrabold text-slate-900 tracking-tight">
+                    {{ detail.wo.kategori_kerusakan }} — {{ detail.wo.lokasi_jalan }}
+                </h2>
+                <p class="text-xs text-slate-500 mt-1">
+                    Wilayah: <strong class="text-slate-700">{{ detail.nama_wilayah }}</strong> • Kelas Jalan: <strong class="text-slate-700">{{ detail.wo.kelas_jalan }}</strong> • Rekomendasi SLA: <strong class="text-red-600">{{ detail.wo.sla_rekomendasi }}</strong>
+                </p>
+            </div>
+
+            <div>
+                <form action="/verifikasi/{{ detail.wo.id_work_order }}/approve" method="post">
+                    <button type="submit" class="bg-[#0B5ED7] hover:bg-blue-700 text-white font-bold text-xs px-5 py-2.5 rounded-lg shadow-sm flex items-center space-x-2 transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        <span>Setujui Tiket</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 4 KARTU METRIK KONTEKS TIKET -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+                <p class="text-[11px] font-semibold text-slate-400 uppercase">Risk Score & Prioritas</p>
+                <p class="text-lg font-extrabold {% if detail.wo.prioritas == 'Urgent' %}text-red-600{% else %}text-amber-600{% endif %} mt-1">
+                    {{ detail.risk_score_label }}
+                </p>
+                <p class="text-[11px] text-slate-500 mt-1">Status Evaluasi: <strong>{{ detail.opsi_verifikasi }}</strong></p>
+            </div>
+            <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+                <p class="text-[11px] font-semibold text-slate-400 uppercase">Severity Visual (CV)</p>
+                <p class="text-lg font-extrabold text-slate-900 mt-1">{{ detail.wo.severity_score_kasus }} / 10</p>
+                <p class="text-[11px] text-slate-500 mt-1">Deteksi YOLOv8-Infra</p>
+            </div>
+            <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+                <p class="text-[11px] font-semibold text-slate-400 uppercase">Exposure (NLP)</p>
+                <p class="text-lg font-extrabold text-slate-900 mt-1">{{ detail.wo.exposure_count }} Laporan</p>
+                <p class="text-[11px] text-slate-500 mt-1">Laporan Tergabung di Lokasi Sama</p>
+            </div>
+            <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+                <p class="text-[11px] font-semibold text-slate-400 uppercase">Vulnerability (GIS)</p>
+                <p class="text-lg font-extrabold text-slate-900 mt-1">Skor {{ detail.wo.vulnerability_score }}</p>
+                <p class="text-[11px] text-slate-500 mt-1">Kedekatan Fasilitas Vital</p>
+            </div>
+        </div>
+
+        <!-- GRID 2 KOLOM: BUKTI LAPORAN & PANEL AI / INSPEKSI -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            <!-- KOLOM KIRI (7 KOLOM) -->
+            <div class="lg:col-span-7 space-y-6">
+                <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-bold text-slate-800 text-sm">Dokumentasi Kerusakan & AI Object Detection</h3>
+                        <span class="bg-blue-50 text-[#0B5ED7] border border-blue-200 text-[10px] font-bold px-2.5 py-1 rounded">
+                            Confidence: 98.4%
+                        </span>
+                    </div>
+
+                    <div class="relative rounded-xl bg-slate-900 h-60 flex flex-col items-center justify-center overflow-hidden border border-slate-300">
+                        <div class="border-2 border-red-500 bg-red-500/10 rounded-lg px-6 py-7 text-center relative">
+                            <span class="absolute -top-3 left-2 bg-red-600 text-white text-[10px] font-extrabold px-2 py-0.5 rounded">
+                                {{ detail.wo.kategori_kerusakan }} | Severity: {{ detail.wo.severity_score_kasus }}
+                            </span>
+                            <p class="text-xs text-slate-200 font-semibold">Citra Bukti Laporan Warga</p>
+                            <p class="text-[11px] text-slate-400 mt-1">{{ detail.laporan.url_foto if detail.laporan else 'static/uploads/jalan_berlubang_sudirman.jpg' }}</p>
+                        </div>
+                        <div class="absolute bottom-3 left-3 right-3 bg-slate-950/80 text-slate-300 text-[10px] px-3 py-1.5 rounded flex justify-between">
+                            <span>Lokasi: {{ detail.wo.lokasi_jalan }}</span>
+                            <span>Wilayah: {{ detail.nama_wilayah }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+                    <h3 class="font-bold text-slate-800 text-sm mb-3">Deskripsi Laporan & Riwayat Keputusan</h3>
+                    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 leading-relaxed mb-4">
+                        <p class="font-bold text-slate-900 mb-1">Narasi Laporan Warga:</p>
+                        <p>"{{ detail.laporan.deskripsi if detail.laporan else 'Kerusakan permukaan jalan membutuhkan verifikasi dan penanganan segera.' }}"</p>
+                    </div>
+
+                    <div class="border-t border-slate-100 pt-3 text-xs">
+                        <p class="font-bold text-slate-800 mb-1">Log Keputusan Verifikasi Admin:</p>
+                        {% if detail.wo.log_keputusan %}
+                            <span class="inline-block bg-indigo-50 text-indigo-800 border border-indigo-200 font-bold px-3 py-1.5 rounded-lg">
+                                {{ detail.wo.log_keputusan }}
+                            </span>
+                        {% else %}
+                            <span class="text-slate-500">Belum ada log keputusan manual pada tiket ini.</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- KOLOM KANAN (5 KOLOM): PANEL AI ANALYSIS & VERIFIKASI SKOR AMBIGU -->
+            <div class="lg:col-span-5 space-y-6">
+                <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+                    <div class="border-b border-slate-100 pb-3 mb-4">
+                        <p class="text-[10px] font-bold text-[#0B5ED7] uppercase">AI Analysis Panel (REQ-VER-2)</p>
+                        <h3 class="font-extrabold text-slate-900 text-base">Ringkasan Penilaian Risiko</h3>
+                    </div>
+
+                    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between mb-4">
+                        <div>
+                            <p class="text-[10px] font-bold text-slate-500 uppercase">Risk Score</p>
+                            <p class="text-2xl font-extrabold text-slate-900 mt-0.5">{{ detail.risk_score_label }}</p>
+                        </div>
+                        <span class="text-xs font-extrabold px-2.5 py-1 rounded {% if detail.is_ambiguous %}bg-amber-100 text-amber-900{% else %}bg-emerald-100 text-emerald-800{% endif %}">
+                            {{ detail.opsi_verifikasi }}
+                        </span>
+                    </div>
+
+                    <div class="p-3.5 rounded-xl bg-blue-50/60 border border-blue-200 text-xs">
+                        <p class="font-bold text-slate-900 mb-1">Rekomendasi Tindakan:</p>
+                        <p class="text-slate-600 text-[11px] leading-relaxed">
+                            {% if detail.is_ambiguous %}
+                                Skor berada pada rentang borderline. Disarankan melakukan <strong>Butuh Verifikasi Lapangan</strong> sebelum penugasan perbaikan.
+                            {% else %}
+                                Skor risiko di atas ambang batas kritis. Tiket siap langsung disetujui oleh Admin PPK.
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+
+                <!-- PANEL AKSI SKOR AMBIGU / BORDERLINE (SKENARIO 2, 3, 4 UC-B) -->
+                <div class="bg-white rounded-xl border-2 {% if detail.is_ambiguous %}border-amber-400{% else %}border-slate-200{% endif %} p-5 shadow-sm">
+                    <span class="inline-block text-[10px] font-extrabold uppercase px-2 py-0.5 rounded {% if detail.is_ambiguous %}bg-amber-100 text-amber-900{% else %}bg-slate-100 text-slate-600{% endif %}">
+                        Opsi Penanganan Skor Ambigu: {{ detail.opsi_verifikasi }}
+                    </span>
+
+                    <h3 class="font-extrabold text-slate-900 text-sm mt-2">Verifikasi Lapangan Tambahan (REQ-VER-4 s/d REQ-VER-6)</h3>
+                    <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+                        Tugaskan Penilik Jalan untuk mengecek lokasi secara fisik, atau lanjutkan persetujuan tiket tanpa inspeksi tambahan.
+                    </p>
+
+                    <!-- Skenario 3: Tugaskan Inspeksi Tambahan -->
+                    <form action="/verifikasi/{{ detail.wo.id_work_order }}/inspect" method="post" class="mt-4 pt-4 border-t border-slate-100 space-y-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">
+                                Pilih Penilik Jalan ({{ detail.nama_wilayah }}):
+                            </label>
+                            <select name="nama_penilik" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800">
+                                {% for nama in detail.daftar_penilik %}
+                                    <option value="{{ nama }}">{{ nama }}</option>
+                                {% else %}
+                                    <option value="Budi Santoso">Budi Santoso</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs py-2.5 px-4 rounded-lg shadow-sm transition">
+                            Tugaskan Inspeksi Tambahan
+                        </button>
+                    </form>
+
+                    <!-- Skenario 4: Lanjutkan Tanpa Inspeksi -->
+                    <form action="/verifikasi/{{ detail.wo.id_work_order }}/skip-inspection" method="post" class="mt-3">
+                        <button type="submit" class="w-full bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold text-xs py-2.5 px-4 rounded-lg transition">
+                            Lanjutkan Tanpa Inspeksi
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-white border-t border-slate-200 py-4 px-6 mt-10">
+        <div class="max-w-[1360px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-500">
+            <span>&copy; 2026 Dinas Sumber Daya Air dan Bina Marga Kota Surabaya.</span>
+            <span class="font-semibold text-slate-600">Kelompok 7 — Kelas I3</span>
+        </div>
+    </footer>
+
+</body>
+</html>
