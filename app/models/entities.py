@@ -32,6 +32,7 @@ class Wilayah(Base):
     __tablename__ = "wilayah"
     id_wilayah = Column(String(20), primary_key=True, index=True)
     nama_wilayah = Column(String(50), nullable=False, unique=True)
+    kecamatan = Column(String(100), nullable=True)
 
     penilik_list = relationship("PenilikJalan", back_populates="wilayah")
     laporan_list = relationship("Laporan", back_populates="wilayah")
@@ -41,6 +42,7 @@ class PenilikJalan(Base):
     id_penilik = Column(String(20), primary_key=True, index=True)
     id_wilayah = Column(String(20), ForeignKey("wilayah.id_wilayah"), nullable=False)
     nama_penilik = Column(String(50), nullable=False)
+    nip = Column(String(20), unique=True, index=True, nullable=True)
     email_penilik = Column(String(50), unique=True, index=True)
     password_hash = Column(String(255), nullable=False)
     status_ketersediaan = Column(String(20), default="Tersedia")
@@ -71,11 +73,15 @@ class WorkOrder(Base):
     sla_rekomendasi = Column(String(30), default="24 jam")
     log_keputusan = Column(Text, nullable=True)
     tanggal_ditugaskan = Column(Date, nullable=True)
+    nomor_spk = Column(String(50), unique=True, nullable=True)
+    tim_pelaksana = Column(String(100), nullable=True)
+    tanggal_selesai = Column(DateTime, nullable=True)
 
     admin = relationship("Admin", back_populates="work_orders")
     penilik = relationship("PenilikJalan", back_populates="work_orders")
     laporan_list = relationship("Laporan", back_populates="work_order")
     perbaikan_list = relationship("Perbaikan", back_populates="work_order")
+    riwayat_list = relationship("RiwayatStatus", back_populates="work_order", order_by="RiwayatStatus.waktu")
 
 class Laporan(Base):
     __tablename__ = "laporan"
@@ -105,7 +111,10 @@ class Inspeksi(Base):
     id_inspeksi = Column(String(20), primary_key=True, index=True)
     id_laporan = Column(String(20), ForeignKey("laporan.id_laporan"), nullable=False)
     id_penilik = Column(String(20), ForeignKey("penilik_jalan.id_penilik"), nullable=False)
-    hasil_temuan = Column(Text, nullable=False)
+    id_work_order = Column(String(20), ForeignKey("work_order.id_work_order"), nullable=True)
+    dimensi_kerusakan = Column(String(50), nullable=True)
+    rekomendasi_penanganan = Column(String(50), nullable=True)
+    hasil_temuan = Column(Text, nullable=False)  # catatan teknis penilik
     url_foto_temuan = Column(String(255), nullable=True)
     tanggal_inspeksi = Column(Date, default=date.today)
 
@@ -117,9 +126,12 @@ class Perbaikan(Base):
     id_perbaikan = Column(String(20), primary_key=True, index=True)
     id_work_order = Column(String(20), ForeignKey("work_order.id_work_order"), nullable=False)
     status_perbaikan = Column(String(30), nullable=False)
+    catatan = Column(Text, nullable=True)
     foto_sesudah = Column(String(255), nullable=True)
     jadwal_lanjutan = Column(String(50), nullable=True)
     tanggal_selesai = Column(DateTime, nullable=True)
+    dicatat_oleh = Column(String(50), nullable=True)
+    waktu = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     work_order = relationship("WorkOrder", back_populates="perbaikan_list")
 
@@ -128,9 +140,11 @@ class Notifikasi(Base):
     id_notifikasi = Column(String(20), primary_key=True, index=True)
     id_laporan = Column(String(20), ForeignKey("laporan.id_laporan"), nullable=False)
     id_warga = Column(String(20), ForeignKey("warga.id_warga"), nullable=False)
+    judul = Column(String(100), nullable=True)
     pesan = Column(Text, nullable=False)
     status_baca = Column(Boolean, default=False)
     status_kirim = Column(String(20), default="Terkirim")
+    waktu_kirim = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     laporan = relationship("Laporan", back_populates="notifikasi_list")
     warga = relationship("Warga", back_populates="notifikasi_list")
@@ -141,5 +155,19 @@ class Rating(Base):
     id_laporan = Column(String(20), ForeignKey("laporan.id_laporan"), unique=True, nullable=False)
     nilai_bintang = Column(Integer, nullable=False)
     komentar = Column(Text, nullable=True)
+    tanggal_rating = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     laporan = relationship("Laporan", back_populates="rating")
+
+
+class RiwayatStatus(Base):
+    """Status history of a Work Order: the timeline shown to citizens (UC-C)."""
+    __tablename__ = "riwayat_status"
+    id_riwayat = Column(Integer, primary_key=True, autoincrement=True)
+    id_work_order = Column(String(20), ForeignKey("work_order.id_work_order"), nullable=False, index=True)
+    status = Column(String(30), nullable=False)
+    keterangan = Column(Text, nullable=True)
+    aktor = Column(String(50), nullable=True)
+    waktu = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    work_order = relationship("WorkOrder", back_populates="riwayat_list")

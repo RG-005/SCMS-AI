@@ -21,6 +21,8 @@
                 </div>
             </div>
             <div class="flex items-center space-x-3">
+                <a href="/lacak" class="hidden sm:inline-flex items-center text-xs font-semibold text-slate-600 hover:text-[#0B5ED7] px-3 py-1.5 rounded-lg hover:bg-slate-50 transition">Lacak Laporan</a>
+                <a href="/notifikasi" id="menuNotifikasi" class="relative inline-flex items-center gap-1 text-xs font-semibold text-slate-600 hover:text-[#0B5ED7] px-3 py-1.5 rounded-lg hover:bg-slate-50 transition">Notifikasi{% if jumlah_notif %}<span id="badgeNotif" class="ml-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] font-extrabold inline-flex items-center justify-center">{{ jumlah_notif }}</span>{% endif %}</a>
                 <div class="flex items-center space-x-2.5 pl-2 border-l border-slate-200">
                     <div class="w-8 h-8 rounded-full bg-[#0B5ED7] text-white flex items-center justify-center font-bold text-xs">{{ (pengguna.nama or '?')[:2] | upper }}</div>
                     <div class="hidden sm:block leading-tight">
@@ -65,7 +67,7 @@
                 <table class="w-full text-left text-xs">
                     <thead>
                         <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold">
-                            <th class="p-3">ID TIKET</th>
+                            <th class="p-3">ID LAPORAN</th>
                             <th class="p-3">KATEGORI & LOKASI</th>
                             <th class="p-3">RISK SCORE</th>
                             <th class="p-3">STATUS</th>
@@ -75,7 +77,7 @@
                         {% for lap in laporan_saya %}
                         {% set wo = lap.work_order %}
                         <tr class="hover:bg-slate-50/50">
-                            <td class="p-3 font-mono font-bold text-[#0B5ED7]">{{ wo.id_work_order if wo else lap.id_laporan }}</td>
+                            <td class="p-3 font-mono font-bold"><a class="text-[#0B5ED7] hover:underline" href="/lacak?id={{ lap.id_laporan }}">{{ lap.id_laporan }}</a><span class="block text-[10px] text-slate-400 font-normal">{{ wo.id_work_order if wo else '' }}</span></td>
                             <td class="p-3">{{ wo.kategori_kerusakan if wo else '-' }} - {{ lap.lokasi_teks }}</td>
                             <td class="p-3">
                                 {% if wo %}

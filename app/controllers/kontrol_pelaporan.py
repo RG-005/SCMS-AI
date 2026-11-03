@@ -1,20 +1,19 @@
 import re
-import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.entities import Laporan, Wilayah, WorkOrder
-from app.services import risk_scoring
+from app.services import penyimpanan, risk_scoring
 from app.services.ai_service import KATEGORI_VALID, AIService, get_ai_service
+from app.services.alur_status import DILAPORKAN, catat_riwayat, kirim_notifikasi
 from app.services.deduplikasi import cari_duplikat
 
-DIREKTORI_UNGGAHAN = Path(__file__).resolve().parents[1] / "static" / "uploads"
 POLA_ID_WORK_ORDER = r"REP-\d{4}-(\d+)"
-POLA_ID_LAPORAN = r"LAP-(\d+)"
 
 
 def _nomor_berikutnya(nilai: list[str], pola: str) -> int:
@@ -51,20 +50,15 @@ class KontrolPelaporan:
         return f"REP-{tahun}-{nomor:05d}"
 
     def _id_laporan_baru(self) -> str:
-        semua = [r[0] for r in self.db.query(Laporan.id_laporan).all()]
-        nomor = _nomor_berikutnya(semua, POLA_ID_LAPORAN)
-        return f"LAP-{nomor:03d}"
+        # Citizen-facing tracking ID, e.g. LAP-2026-0001 (UC-C)
+        return penyimpanan.id_berurutan(self.db, Laporan.id_laporan, "LAP")
 
     def _simpan_foto(self, data: Optional[bytes], ekstensi: str, nama_asli: str) -> str:
         if data is None:
             # No bytes (unit tests / scripts calling the controller directly):
             # keep a reference to the original name only.
             return f"static/uploads/{Path(nama_asli).name}"[:255]
-        DIREKTORI_UNGGAHAN.mkdir(parents=True, exist_ok=True)
-        ekstensi_simpan = {"jpeg": "jpg", "JPEG": "jpg", "PNG": "png"}.get(ekstensi, ekstensi.lower())
-        nama = f"{uuid.uuid4().hex}.{ekstensi_simpan}"
-        (DIREKTORI_UNGGAHAN / nama).write_bytes(data)
-        return f"static/uploads/{nama}"
+        return penyimpanan.simpan_foto(data, ekstensi)
 
     # ---- main flow (UC-A) ----------------------------------------------------
     def kirim_laporan(
@@ -107,36 +101,50 @@ class KontrolPelaporan:
         severity = cv.severity_score
         lokasi_simpan = lokasi[:100]
         lokasi_teks = lokasi[:100]
-        status_laporan = "Diterima" if self.ai.is_simulasi else "Terverifikasi AI"
 
         # Step 4: spatial-semantic deduplication (REQ-RPT-7, REQ-RPT-8, PRD BR-3)
         duplikat = cari_duplikat(self.db, self.ai, kategori, lokasi, deskripsi, latitude, longitude)
         url_foto = self._simpan_foto(foto_bytes, val.format_gambar or val.ekstensi, filename)
         if duplikat:
-            wo = duplikat.work_order
-            # Exposure = number of DIFFERENT citizens reporting this damage; the same
-            # citizen reporting again is recorded but does not raise the priority.
-            sudah_melapor = self.db.query(Laporan).filter_by(id_work_order=wo.id_work_order, id_warga=id_warga).first()
-            if not sudah_melapor:
-                wo.exposure_count = (wo.exposure_count or 1) + 1
-            wo.severity_score_kasus = max(wo.severity_score_kasus or 0.0, severity)
-            risk_scoring.terapkan_ke_work_order(wo)
-            self.db.add(Laporan(
-                id_laporan=self._id_laporan_baru(),
-                id_warga=id_warga,
-                id_work_order=wo.id_work_order,
-                id_wilayah=wo.id_wilayah,
-                url_foto=url_foto,
-                lokasi_teks=lokasi_teks,
-                latitude=latitude,
-                longitude=longitude,
-                deskripsi=deskripsi,
-                severity_score=severity,
-                status="Digabungkan",
-            ))
-            self.db.commit()
-            return self._hasil(True, wo, cv, kategori, severity, latitude, longitude,
-                               f"Laporan Anda telah digabungkan dengan laporan serupa yang sudah aktif ({wo.id_work_order})")
+            id_wo_duplikat = duplikat.work_order.id_work_order
+
+            def gabungkan():
+                wo = self.db.get(WorkOrder, id_wo_duplikat)
+                # Exposure = number of DIFFERENT citizens reporting this damage; the same
+                # citizen reporting again is recorded but does not raise the priority.
+                sudah_melapor = self.db.query(Laporan).filter_by(id_work_order=wo.id_work_order, id_warga=id_warga).first()
+                if not sudah_melapor:
+                    # atomic increment, so two simultaneous merges both count
+                    (self.db.query(WorkOrder).filter_by(id_work_order=wo.id_work_order)
+                     .update({WorkOrder.exposure_count: func.coalesce(WorkOrder.exposure_count, 1) + 1},
+                             synchronize_session=False))
+                    self.db.refresh(wo)
+                wo.severity_score_kasus = max(wo.severity_score_kasus or 0.0, severity)
+                risk_scoring.terapkan_ke_work_order(wo)
+                lap = Laporan(
+                    id_laporan=self._id_laporan_baru(),
+                    id_warga=id_warga,
+                    id_work_order=wo.id_work_order,
+                    id_wilayah=wo.id_wilayah,
+                    url_foto=url_foto,
+                    lokasi_teks=lokasi_teks,
+                    latitude=latitude,
+                    longitude=longitude,
+                    deskripsi=deskripsi,
+                    severity_score=severity,
+                    status=wo.status_work_order,  # a report always shows its ticket's status
+                )
+                self.db.add(lap)
+                catat_riwayat(self.db, wo, wo.status_work_order,
+                              f"Laporan baru dari warga digabungkan ke tiket ini (jumlah pelapor: {wo.exposure_count})")
+                kirim_notifikasi(self.db, lap, "Laporan digabungkan",
+                                 f"Laporan Anda digabungkan dengan laporan serupa yang sudah aktif ({wo.id_work_order}).")
+                self.db.commit()
+                return self._hasil(True, wo, cv, kategori, severity, latitude, longitude,
+                                   f"Laporan Anda telah digabungkan dengan laporan serupa yang sudah aktif ({wo.id_work_order})",
+                                   lap.id_laporan)
+
+            return penyimpanan.dengan_coba_ulang(self.db, gabungkan)
 
         # New Work Order (REQ-RPT-9)
         for _ in range(5):  # retry if another request took the same ID
@@ -152,12 +160,12 @@ class KontrolPelaporan:
                     severity_score_kasus=severity,
                     exposure_count=1,
                     vulnerability_score=risk_scoring.VULNERABILITY_DEFAULT,
-                    status_work_order="Dilaporkan",
+                    status_work_order=DILAPORKAN,
                 )
                 risk_scoring.terapkan_ke_work_order(wo)
                 self.db.add(wo)
                 self.db.flush()
-                self.db.add(Laporan(
+                lap = Laporan(
                     id_laporan=self._id_laporan_baru(),
                     id_warga=id_warga,
                     id_work_order=wo.id_work_order,
@@ -168,8 +176,12 @@ class KontrolPelaporan:
                     longitude=longitude,
                     deskripsi=deskripsi,
                     severity_score=severity,
-                    status=status_laporan,
-                ))
+                    status=DILAPORKAN,
+                )
+                self.db.add(lap)
+                catat_riwayat(self.db, wo, DILAPORKAN, "Laporan warga diterima sistem")
+                kirim_notifikasi(self.db, lap, "Laporan diterima",
+                                 f"Laporan Anda diterima dengan nomor tiket {wo.id_work_order}.")
                 self.db.commit()
                 break
             except IntegrityError:
@@ -178,11 +190,12 @@ class KontrolPelaporan:
             return {"success": False, "step": 4, "message": "Gagal menerbitkan nomor tiket, silakan coba lagi"}
 
         return self._hasil(False, wo, cv, kategori, severity, latitude, longitude,
-                           f"Laporan berhasil dikirim dengan nomor tiket {wo.id_work_order}")
+                           f"Laporan berhasil dikirim dengan nomor tiket {wo.id_work_order}", lap.id_laporan)
 
-    def _hasil(self, is_duplikat, wo, cv, kategori, severity, lat, lng, pesan):
+    def _hasil(self, is_duplikat, wo, cv, kategori, severity, lat, lng, pesan, id_laporan):
         return {
             "success": True,
+            "id_laporan": id_laporan,
             "is_duplicate": is_duplikat,
             "ticket_id": wo.id_work_order,
             "status_work_order": wo.status_work_order,

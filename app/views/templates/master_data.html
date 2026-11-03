@@ -1,0 +1,116 @@
+{% extends "_layout.html" %}
+{% block judul %}Data Master (Wilayah & Penilik Jalan){% endblock %}
+{% block menu_aktif %}master{% endblock %}
+{% block konten %}
+<div class="mb-5">
+    <span class="text-[10px] font-extrabold text-[#0B5ED7] uppercase tracking-wider">UC-D • Data Master</span>
+    <h2 class="text-2xl font-extrabold text-slate-900 tracking-tight">Data Master (Wilayah & Penilik Jalan)</h2>
+    <p class="text-xs text-slate-500 mt-1">Kelola wilayah rayon dan Penilik Jalan agar setiap laporan diarahkan ke rayon dan petugas yang tepat.</p>
+</div>
+
+{% if akun_baru %}
+<div id="akunBaru" class="mb-5 p-4 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-950">
+    <p class="font-extrabold mb-1">Akun Penilik Jalan baru: {{ akun_baru.nama }}</p>
+    <p>Login dengan NIP <strong class="font-mono">{{ akun_baru.nip }}</strong>{% if akun_baru.email %} atau email <strong>{{ akun_baru.email }}</strong>{% endif %} dan kata sandi sementara <strong class="font-mono select-all">{{ akun_baru.sandi_sementara }}</strong>.</p>
+    <p class="mt-1 text-blue-800">Kata sandi ini hanya ditampilkan sekali. Serahkan langsung kepada petugas yang bersangkutan.</p>
+</div>
+{% endif %}
+
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <!-- Penilik Jalan -->
+    <section class="lg:col-span-8 space-y-6">
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-200"><h3 class="font-bold text-slate-900 text-sm">Penilik Jalan</h3></div>
+            <div class="overflow-x-auto">
+                <table id="tabelPenilik" class="w-full text-left text-xs">
+                    <thead><tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase">
+                        <th class="py-2.5 px-4">Nama / NIP</th><th class="py-2.5 px-4">Wilayah</th><th class="py-2.5 px-4">Tiket Aktif</th><th class="py-2.5 px-4">Ketersediaan</th>
+                    </tr></thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for item in penilik %}{% set p = item.p %}
+                        <tr>
+                            <td class="py-3 px-4"><strong class="text-slate-900">{{ p.nama_penilik }}</strong><span class="block font-mono text-[11px] text-slate-500">{{ p.nip or 'NIP belum diisi' }}</span></td>
+                            <td class="py-3 px-4">{{ item.nama_wilayah }}</td>
+                            <td class="py-3 px-4">{{ item.beban_aktif }}</td>
+                            <td class="py-3 px-4">
+                                {% if boleh_aksi %}
+                                <form method="post" action="/master-data/penilik/{{ p.id_penilik }}/ketersediaan" class="flex gap-1.5">
+                                    <select name="status" aria-label="Ketersediaan {{ p.nama_penilik }}" class="border border-slate-300 rounded-lg px-2 py-1 text-xs bg-white">
+                                        {% for st in status_ketersediaan %}<option value="{{ st }}" {{ 'selected' if p.status_ketersediaan == st else '' }}>{{ st }}</option>{% endfor %}
+                                    </select>
+                                    <button type="submit" class="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200">Ubah</button>
+                                </form>
+                                {% else %}{{ p.status_ketersediaan }}{% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" class="p-6 text-center text-slate-500">Belum ada Penilik Jalan.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {% if boleh_aksi %}
+        <form id="formPenilik" method="post" action="/master-data/penilik" class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-3">
+            <h3 class="font-bold text-slate-900 text-sm">Tambah Penilik Jalan</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                    <label for="nip" class="block text-xs font-bold text-slate-700 mb-1">NIP (18 digit)</label>
+                    <input id="nip" name="nip" value="{{ form.nip or '' }}" inputmode="numeric" maxlength="18" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono">
+                </div>
+                <div>
+                    <label for="nama_penilik" class="block text-xs font-bold text-slate-700 mb-1">Nama Lengkap</label>
+                    <input id="nama_penilik" name="nama_penilik" value="{{ form.nama_penilik or '' }}" maxlength="50" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs">
+                </div>
+                <div>
+                    <label for="id_wilayah_penilik" class="block text-xs font-bold text-slate-700 mb-1">Wilayah Tugas</label>
+                    <select id="id_wilayah_penilik" name="id_wilayah" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white">
+                        {% for item in wilayah %}<option value="{{ item.w.id_wilayah }}" {{ 'selected' if form.id_wilayah == item.w.id_wilayah else '' }}>{{ item.w.nama_wilayah }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="email_penilik" class="block text-xs font-bold text-slate-700 mb-1">Email Instansi (opsional)</label>
+                    <input id="email_penilik" name="email_penilik" type="email" value="{{ form.email_penilik or '' }}" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs">
+                </div>
+            </div>
+            <button type="submit" id="simpanPenilik" class="bg-[#0B5ED7] hover:bg-blue-700 text-white font-bold text-xs px-5 py-2.5 rounded-lg">Simpan Data</button>
+        </form>
+        {% endif %}
+    </section>
+
+    <!-- Wilayah -->
+    <section class="lg:col-span-4 space-y-6">
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+            <h3 class="font-bold text-slate-900 text-sm mb-3">Wilayah Rayon</h3>
+            <ul id="daftarWilayah" class="text-xs divide-y divide-slate-100">
+                {% for item in wilayah %}
+                <li class="py-2.5">
+                    <span class="font-mono text-[11px] text-slate-500">{{ item.w.id_wilayah }}</span>
+                    <strong class="block text-slate-900">{{ item.w.nama_wilayah }}</strong>
+                    <span class="text-slate-500">{{ item.w.kecamatan or '-' }} &bull; {{ item.jumlah_penilik }} penilik</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% if boleh_aksi %}
+        <form id="formWilayah" method="post" action="/master-data/wilayah" class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-3">
+            <h3 class="font-bold text-slate-900 text-sm">Tambah Wilayah Rayon</h3>
+            <div>
+                <label for="kode_wilayah" class="block text-xs font-bold text-slate-700 mb-1">Kode Wilayah</label>
+                <input id="kode_wilayah" name="kode_wilayah" value="{{ form.kode_wilayah or '' }}" placeholder="WIL-04" maxlength="20" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono uppercase">
+            </div>
+            <div>
+                <label for="nama_wilayah" class="block text-xs font-bold text-slate-700 mb-1">Nama Rayon</label>
+                <input id="nama_wilayah" name="nama_wilayah" value="{{ form.nama_wilayah or '' }}" maxlength="50" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs">
+            </div>
+            <div>
+                <label for="kecamatan" class="block text-xs font-bold text-slate-700 mb-1">Kecamatan Cakupan</label>
+                <input id="kecamatan" name="kecamatan" value="{{ form.kecamatan or '' }}" maxlength="100" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs">
+            </div>
+            <button type="submit" id="simpanWilayah" class="bg-[#0B5ED7] hover:bg-blue-700 text-white font-bold text-xs px-5 py-2.5 rounded-lg">Simpan Data</button>
+        </form>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

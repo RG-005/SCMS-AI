@@ -1,0 +1,41 @@
+{% extends "_layout.html" %}
+{% block judul %}Tugas Lapangan{% endblock %}
+{% block menu_aktif %}tugas{% endblock %}
+{% block konten %}
+<div class="mb-5">
+    <span class="text-[10px] font-extrabold text-[#0B5ED7] uppercase tracking-wider">UC-E & UC-F • Tugas Lapangan</span>
+    <h2 class="text-2xl font-extrabold text-slate-900 tracking-tight">Tugas Lapangan — {{ nama_wilayah }}</h2>
+    <p class="text-xs text-slate-500 mt-1">Tiket di wilayah Anda yang menunggu survei, dan perbaikan yang sedang berjalan.</p>
+</div>
+
+{% macro kartu(wo, tombol) %}
+<a href="/TugasLapangan/{{ wo.id_work_order }}" class="kartu-tugas block bg-white rounded-2xl border border-slate-200 shadow-sm p-4 hover:border-[#0B5ED7]">
+    <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+            <span class="font-mono text-xs font-bold text-[#0B5ED7]">{{ wo.id_work_order }}</span>
+            <p class="text-sm font-extrabold text-slate-900 mt-0.5">{{ wo.kategori_kerusakan }}</p>
+            <p class="text-xs text-slate-500 truncate">{{ wo.lokasi_jalan }}</p>
+        </div>
+        <span class="shrink-0 text-[10px] font-extrabold px-2 py-0.5 rounded {{ 'bg-red-100 text-red-700' if wo.risk_score >= 8 else ('bg-orange-100 text-orange-800' if wo.risk_score >= 6 else 'bg-amber-100 text-amber-900') }}">{{ wo.risk_score }} {{ wo.prioritas }}</span>
+    </div>
+    <div class="mt-3 flex items-center justify-between text-xs">
+        <span class="font-semibold text-slate-600">{{ wo.status_work_order }}</span>
+        <span class="bg-[#0B5ED7] text-white font-bold px-4 py-2.5 rounded-xl">{{ tombol }}</span>
+    </div>
+</a>
+{% endmacro %}
+
+<h3 class="text-sm font-extrabold text-slate-900 mb-3">Menunggu Survei Lapangan ({{ inspeksi | length }})</h3>
+<div id="daftarInspeksi" class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8">
+    {% for wo in inspeksi %}{{ kartu(wo, 'Isi Hasil Inspeksi') }}{% else %}
+    <p class="text-xs text-slate-500 bg-white rounded-xl border border-dashed border-slate-300 p-6 text-center md:col-span-2">Tidak ada tiket yang menunggu survei.</p>
+    {% endfor %}
+</div>
+
+<h3 class="text-sm font-extrabold text-slate-900 mb-3">Perbaikan Berjalan ({{ perbaikan | length }})</h3>
+<div id="daftarPerbaikan" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+    {% for wo in perbaikan %}{{ kartu(wo, 'Perbarui Progres') }}{% else %}
+    <p class="text-xs text-slate-500 bg-white rounded-xl border border-dashed border-slate-300 p-6 text-center md:col-span-2">Tidak ada perbaikan yang sedang berjalan.</p>
+    {% endfor %}
+</div>
+{% endblock %}

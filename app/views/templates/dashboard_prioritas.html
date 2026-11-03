@@ -55,12 +55,24 @@
             <a href="/Dashboard" class="py-3 text-[#0B5ED7] border-b-2 border-[#0B5ED7] flex items-center space-x-1.5 whitespace-nowrap font-bold">
                 <span>Dashboard Prioritas & Peta GIS</span>
             </a>
+            {% if pengguna.peran in ['Admin', 'Kepala Bidang'] %}
             <a href="/verifikasi" class="py-3 text-slate-500 hover:text-slate-800 border-b-2 border-transparent flex items-center space-x-1.5 whitespace-nowrap transition">
                 <span>Verifikasi Laporan</span>
             </a>
+            {% endif %}
             <a href="/work-orders" class="py-3 text-slate-500 hover:text-slate-800 border-b-2 border-transparent flex items-center space-x-1.5 whitespace-nowrap transition">
                 <span>Penugasan & Work Order (SPK)</span>
             </a>
+            {% if pengguna.peran in ['Admin', 'Kepala Bidang'] %}
+            <a href="/master-data" class="py-3 text-slate-500 hover:text-slate-800 border-b-2 border-transparent flex items-center space-x-1.5 whitespace-nowrap transition">
+                <span>Data Master</span>
+            </a>
+            {% endif %}
+            {% if pengguna.peran == 'Penilik Jalan' %}
+            <a href="/TugasLapangan" class="py-3 text-slate-500 hover:text-slate-800 border-b-2 border-transparent flex items-center space-x-1.5 whitespace-nowrap transition">
+                <span>Tugas Lapangan</span>
+            </a>
+            {% endif %}
         </div>
     </header>
 
@@ -153,7 +165,7 @@
                     <label class="block text-[11px] font-bold text-slate-600 mb-1">Filter Status Penanganan</label>
                     <select name="status" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-semibold text-slate-800 bg-white">
                         <option value="Semua">Semua Status</option>
-                        {% for st in ["Dilaporkan", "Disetujui", "Menunggu Penugasan", "Ditugaskan", "Selesai"] %}
+                        {% for st in ["Dilaporkan", "Disetujui", "Menunggu Inspeksi", "Menunggu Penugasan", "Ditugaskan", "Terinspeksi", "Dalam Proses", "Selesai"] %}
                         <option value="{{ st }}" {% if filter_status == st %}selected{% endif %}>{{ st }}</option>
                         {% endfor %}
                     </select>

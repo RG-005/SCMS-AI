@@ -51,12 +51,24 @@
             <a href="/Dashboard" class="py-3 text-slate-500 hover:text-slate-800 border-b-2 border-transparent flex items-center space-x-1.5 whitespace-nowrap transition">
                 <span>Dashboard Prioritas & Peta GIS</span>
             </a>
+            {% if pengguna.peran in ['Admin', 'Kepala Bidang'] %}
             <a href="/verifikasi" class="py-3 text-slate-500 hover:text-slate-800 border-b-2 border-transparent flex items-center space-x-1.5 whitespace-nowrap transition">
                 <span>Verifikasi Laporan</span>
             </a>
+            {% endif %}
             <a href="/work-orders" class="py-3 text-[#0B5ED7] border-b-2 border-[#0B5ED7] flex items-center space-x-1.5 whitespace-nowrap font-bold">
                 <span>Penugasan & Work Order (SPK)</span>
             </a>
+            {% if pengguna.peran in ['Admin', 'Kepala Bidang'] %}
+            <a href="/master-data" class="py-3 text-slate-500 hover:text-slate-800 border-b-2 border-transparent flex items-center space-x-1.5 whitespace-nowrap transition">
+                <span>Data Master</span>
+            </a>
+            {% endif %}
+            {% if pengguna.peran == 'Penilik Jalan' %}
+            <a href="/TugasLapangan" class="py-3 text-slate-500 hover:text-slate-800 border-b-2 border-transparent flex items-center space-x-1.5 whitespace-nowrap transition">
+                <span>Tugas Lapangan</span>
+            </a>
+            {% endif %}
         </div>
     </header>
 
@@ -85,6 +97,9 @@
         </div>
 
         <!-- Notifikasi Umpan Balik Penugasan -->
+        {% if flash %}
+        <div id="pesanSistem" role="status" class="mb-6 p-4 rounded-xl border text-xs font-bold {{ 'bg-emerald-50 border-emerald-200 text-emerald-900' if flash.jenis == 'sukses' else 'bg-red-50 border-red-200 text-red-800' }}">{{ flash.pesan }}</div>
+        {% endif %}
         {% if pesan_sukses %}
         <div class="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex items-center justify-between shadow-sm">
             <div class="flex items-center space-x-3">
@@ -189,7 +204,7 @@
                 </div>
             </div>
 
-            {% if boleh_aksi %}
+            {% if boleh_aksi and info_tiket.boleh_ditugaskan %}
             <form action="/work-orders/{{ info_tiket.id_work_order }}/assign" method="post" class="flex flex-col sm:flex-row items-end gap-3">
                 <div class="w-full sm:flex-1">
                     <label class="block text-xs font-bold text-slate-700 mb-1.5">
@@ -197,8 +212,8 @@
                     </label>
                     {% if info_tiket.daftar_penilik %}
                         <select name="nama_penilik" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            {% for nama in info_tiket.daftar_penilik %}
-                                <option value="{{ nama }}">{{ nama }} - Tersedia ({{ info_tiket.nama_wilayah }})</option>
+                            {% for id_p, label in info_tiket.opsi_penilik %}
+                                <option value="{{ id_p }}">{{ label }} - Tersedia ({{ info_tiket.nama_wilayah }})</option>
                             {% endfor %}
                         </select>
                     {% else %}
@@ -224,11 +239,83 @@
                     </a>
                 </div>
             </form>
-            {% else %}
+            {% elif info_tiket.status_work_order == 'Dilaporkan' %}
+            <p class="p-3 rounded-lg bg-amber-50 border border-amber-300 text-[11px] text-amber-900 font-semibold">
+                Tiket ini belum diverifikasi. Verifikasi terlebih dahulu di halaman
+                <a class="underline" href="/verifikasi?ticket_id={{ info_tiket.id_work_order }}">Verifikasi Laporan</a> sebelum menugaskan Penilik Jalan.
+            </p>
+            {% elif info_tiket.boleh_ditugaskan %}
             <p class="p-3 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-600">
                 Penilik Jalan tersedia di {{ info_tiket.nama_wilayah }}: {{ info_tiket.daftar_penilik | join(', ') or 'tidak ada' }}.
                 Hanya Admin (PPK) yang dapat menerbitkan penugasan.
             </p>
+            {% endif %}
+
+            {% set wo = info_tiket.wo %}
+            {% if info_tiket.inspeksi %}
+            <div id="ringkasanInspeksi" class="mt-4 p-4 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700">
+                <p class="font-extrabold text-slate-900 mb-1">Hasil Inspeksi Lapangan (UC-E)</p>
+                <p>Dimensi: <strong>{{ info_tiket.inspeksi.dimensi_kerusakan or '-' }}</strong> &bull; Rekomendasi: <strong>{{ info_tiket.inspeksi.rekomendasi_penanganan or '-' }}</strong></p>
+                <p class="mt-0.5">Catatan: {{ info_tiket.inspeksi.hasil_temuan }}</p>
+                {% if info_tiket.inspeksi.url_foto_temuan %}<a class="text-[#0B5ED7] underline" href="/{{ info_tiket.inspeksi.url_foto_temuan }}" target="_blank">Lihat foto survei</a>{% endif %}
+            </div>
+            {% endif %}
+
+            {% if wo.status_work_order == 'Terinspeksi' %}
+                {% if boleh_aksi %}
+                <!-- UC-F: Terbitkan SPK -->
+                <form id="formSpk" action="/work-orders/{{ wo.id_work_order }}/spk" method="post" class="mt-4 grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+                    <div>
+                        <label for="nomor_spk" class="block text-xs font-bold text-slate-700 mb-1">Nomor SPK</label>
+                        <input id="nomor_spk" name="nomor_spk" maxlength="50" placeholder="SPK/PUPR/XI/2026/001" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono">
+                    </div>
+                    <div>
+                        <label for="tim_pelaksana" class="block text-xs font-bold text-slate-700 mb-1">Tim Pelaksana</label>
+                        <input id="tim_pelaksana" name="tim_pelaksana" list="daftarTim" maxlength="100" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs">
+                        <datalist id="daftarTim">{% for t in tim_default %}<option value="{{ t }}">{% endfor %}</datalist>
+                    </div>
+                    <div>
+                        <label for="status_awal" class="block text-xs font-bold text-slate-700 mb-1">Status Progres</label>
+                        <select id="status_awal" name="status_awal" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white"><option value="Dalam Proses">Dalam Proses</option></select>
+                    </div>
+                    <button type="submit" id="terbitkanSpk" class="bg-[#0B5ED7] hover:bg-blue-700 text-white font-bold text-xs px-5 py-2.5 rounded-lg">Terbitkan SPK</button>
+                </form>
+                {% else %}
+                <p class="mt-4 text-[11px] text-slate-600">Menunggu Admin menerbitkan SPK.</p>
+                {% endif %}
+            {% endif %}
+
+            {% if wo.nomor_spk %}
+            <p class="mt-4 text-xs text-slate-700">SPK: <strong class="font-mono">{{ wo.nomor_spk }}</strong> &bull; Tim: <strong>{{ wo.tim_pelaksana }}</strong></p>
+            {% endif %}
+
+            {% if wo.status_work_order == 'Dalam Proses' and boleh_aksi %}
+            <!-- UC-F: Update progres oleh Admin -->
+            <form id="formProgresAdmin" action="/work-orders/{{ wo.id_work_order }}/progres" method="post" enctype="multipart/form-data" class="mt-4 grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+                <div>
+                    <label for="status_baru" class="block text-xs font-bold text-slate-700 mb-1">Status Progres</label>
+                    <select id="status_baru" name="status_baru" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white">
+                        <option value="Dalam Proses">Dalam Proses</option><option value="Selesai">Selesai</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="catatan_progres" class="block text-xs font-bold text-slate-700 mb-1">Catatan</label>
+                    <input id="catatan_progres" name="catatan_progres" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs">
+                </div>
+                <div>
+                    <label for="foto_selesai" class="block text-xs font-bold text-slate-700 mb-1">Foto Bukti (wajib jika Selesai)</label>
+                    <input id="foto_selesai" name="foto_selesai" type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png" class="block w-full text-xs">
+                </div>
+                <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-5 py-2.5 rounded-lg">Perbarui Status Penanganan</button>
+            </form>
+            {% endif %}
+
+            {% if info_tiket.riwayat_perbaikan %}
+            <ul class="mt-4 text-xs divide-y divide-slate-100 border-t border-slate-100">
+                {% for pr in info_tiket.riwayat_perbaikan %}
+                <li class="py-2"><strong>{{ pr.status_perbaikan }}</strong> — {{ pr.catatan or '-' }}{% if pr.foto_sesudah %} <a class="text-[#0B5ED7] underline" href="/{{ pr.foto_sesudah }}" target="_blank">foto</a>{% endif %}</li>
+                {% endfor %}
+            </ul>
             {% endif %}
         </div>
         {% endif %}
@@ -249,7 +336,7 @@
                     <label class="block text-[11px] font-semibold text-slate-500 mb-1">Status Work Order</label>
                     <select name="status" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 bg-white focus:outline-none focus:border-blue-500">
                         <option value="Semua">Semua Status</option>
-                        {% for st in ["Dilaporkan", "Disetujui", "Menunggu Penugasan", "Ditugaskan", "Dalam Proses", "Selesai"] %}
+                        {% for st in ["Dilaporkan", "Disetujui", "Menunggu Inspeksi", "Menunggu Penugasan", "Ditugaskan", "Terinspeksi", "Dalam Proses", "Selesai"] %}
                         <option value="{{ st }}" {% if filter_status == st %}selected{% endif %}>{{ st }}</option>
                         {% endfor %}
                     </select>

@@ -10,8 +10,11 @@ import sys
 
 from passlib.context import CryptContext
 from app.database import SessionLocal, engine, Base
+from datetime import datetime, timedelta
+
 from app.models.entities import (
-    Warga, Admin, Wilayah, PenilikJalan, WorkOrder, Laporan
+    Warga, Admin, Wilayah, PenilikJalan, WorkOrder, Laporan,
+    Inspeksi, Perbaikan, Notifikasi, RiwayatStatus,
 )
 
 from app.services.risk_scoring import terapkan_ke_work_order
@@ -38,9 +41,9 @@ def seed_data(force: bool = False, verbose: bool = True):
 
     # 2. Seed Wilayah (Sesuai Skenario UC-G & UC-H)
     wilayah_list = [
-        Wilayah(id_wilayah="WIL-01", nama_wilayah="Wilayah Gubeng"),
-        Wilayah(id_wilayah="WIL-02", nama_wilayah="Wilayah Benowo"),
-        Wilayah(id_wilayah="WIL-03", nama_wilayah="Wonokromo"),
+        Wilayah(id_wilayah="WIL-01", nama_wilayah="Wilayah Gubeng", kecamatan="Gubeng, Tambaksari, Mulyorejo"),
+        Wilayah(id_wilayah="WIL-02", nama_wilayah="Wilayah Benowo", kecamatan="Benowo, Pakal, Sambikerep"),
+        Wilayah(id_wilayah="WIL-03", nama_wilayah="Wonokromo", kecamatan="Wonokromo, Wonocolo, Jambangan"),
     ]
     db.add_all(wilayah_list)
 
@@ -104,6 +107,7 @@ def seed_data(force: bool = False, verbose: bool = True):
             id_penilik="PNL-01",
             id_wilayah="WIL-01", # Wilayah Gubeng
             nama_penilik="Budi Santoso",
+            nip="198501012015021001",  # NIP terdaftar untuk skenario duplikat UC-D
             email_penilik="budi.santoso@dpupr.surabaya.go.id",
             password_hash=hashed_pw,
             status_ketersediaan="Tersedia"
@@ -180,7 +184,7 @@ def seed_data(force: bool = False, verbose: bool = True):
     # 7. Seed Laporan Warga terkait tiket di atas
     laporan_list = [
         Laporan(
-            id_laporan="LAP-001",
+            id_laporan="LAP-2026-0001",
             id_work_order="REP-2026-00341",
             id_warga="USR-01",
             id_wilayah="WIL-01",
@@ -190,10 +194,11 @@ def seed_data(force: bool = False, verbose: bool = True):
             latitude=-7.27970,
             longitude=112.76180,
             severity_score=8.4,
-            status="Disetujui"
+            status="Disetujui",
+            tanggal_lapor=datetime(2026, 10, 20, 8, 15),
         ),
         Laporan(
-            id_laporan="LAP-002",
+            id_laporan="LAP-2026-0002",
             id_work_order="REP-2026-00298",
             id_warga="USR-03",
             id_wilayah="WIL-01",
@@ -203,10 +208,11 @@ def seed_data(force: bool = False, verbose: bool = True):
             latitude=-7.26550,
             longitude=112.74700,
             severity_score=8.0,
-            status="Ditugaskan"
+            status="Ditugaskan",
+            tanggal_lapor=datetime(2026, 10, 18, 7, 40),
         ),
         Laporan(
-            id_laporan="LAP-003",
+            id_laporan="LAP-2026-0003",
             id_work_order="REP-2026-00290",
             id_warga="USR-01",
             id_wilayah="WIL-01",
@@ -216,10 +222,65 @@ def seed_data(force: bool = False, verbose: bool = True):
             latitude=-7.26610,
             longitude=112.77900,
             severity_score=6.0,
-            status="Selesai"
+            status="Selesai",
+            tanggal_lapor=datetime(2026, 10, 5, 9, 0),
         )
     ]
     db.add_all(laporan_list)
+    db.flush()
+
+    # 8. Sprint 2: riwayat status (linimasa UC-C), inspeksi, SPK & bukti perbaikan, notifikasi (UC-I)
+    def jam(hari, j, m=0):
+        # given in WIB (UTC+7), stored in UTC like everything the app writes
+        return datetime(2026, 10, hari, j, m) - timedelta(hours=7)
+
+    riwayat = {
+        "REP-2026-00341": [("Dilaporkan", "Laporan warga diterima sistem", None, jam(20, 8, 15)),
+                           ("Disetujui", "Disetujui oleh Admin", "admin@dpupr.surabaya.go.id", jam(20, 13))],
+        "REP-2026-00355": [("Dilaporkan", "Laporan warga diterima sistem", None, jam(22, 10))],
+        "REP-2026-00360": [("Dilaporkan", "Laporan warga diterima sistem", None, jam(19, 16)),
+                           ("Disetujui", "Disetujui oleh Admin", "admin@dpupr.surabaya.go.id", jam(20, 9))],
+        "REP-2026-00298": [("Dilaporkan", "Laporan warga diterima sistem", None, jam(18, 7, 40)),
+                           ("Disetujui", "Disetujui oleh Admin", "admin@dpupr.surabaya.go.id", jam(18, 11)),
+                           ("Ditugaskan", "Ditugaskan kepada Budi Santoso", "admin@dpupr.surabaya.go.id", jam(19, 8))],
+        "REP-2026-00290": [("Dilaporkan", "Laporan warga diterima sistem", None, jam(5, 9)),
+                           ("Disetujui", "Disetujui oleh Admin", "admin@dpupr.surabaya.go.id", jam(5, 14)),
+                           ("Ditugaskan", "Ditugaskan kepada Budi Santoso", "admin@dpupr.surabaya.go.id", jam(6, 8)),
+                           ("Terinspeksi", "Dimensi 3m x 0.2m; rekomendasi Tambal Sulam Dingin (Cold Mix)", "Budi Santoso", jam(7, 10)),
+                           ("Dalam Proses", "SPK SPK/PUPR/X/2026/014 - Satgas Rayon Gubeng", "admin@dpupr.surabaya.go.id", jam(8, 9)),
+                           ("Selesai", "Retakan ditutup dan permukaan diratakan", "Budi Santoso", jam(10, 15))],
+    }
+    for id_wo, entri in riwayat.items():
+        for status, ket, aktor, waktu in entri:
+            db.add(RiwayatStatus(id_work_order=id_wo, status=status, keterangan=ket, aktor=aktor, waktu=waktu))
+
+    wo_290 = db.get(WorkOrder, "REP-2026-00290")
+    wo_290.id_penilik = "PNL-01"
+    wo_290.nomor_spk = "SPK/PUPR/X/2026/014"
+    wo_290.tim_pelaksana = "Satgas Rayon Gubeng"
+    wo_290.tanggal_selesai = jam(10, 15)
+    db.add(Inspeksi(id_inspeksi="INS-2026-0001", id_laporan="LAP-2026-0003", id_penilik="PNL-01",
+                    id_work_order="REP-2026-00290", dimensi_kerusakan="3m x 0.2m",
+                    rekomendasi_penanganan="Tambal Sulam Dingin (Cold Mix)",
+                    hasil_temuan="Retak memanjang di jalur lambat, belum ada lubang", tanggal_inspeksi=jam(7, 10).date()))
+    db.add_all([
+        Perbaikan(id_perbaikan="PRB-2026-0001", id_work_order="REP-2026-00290", status_perbaikan="Dalam Proses",
+                  catatan="SPK SPK/PUPR/X/2026/014 diterbitkan untuk Satgas Rayon Gubeng",
+                  dicatat_oleh="admin@dpupr.surabaya.go.id", waktu=jam(8, 9)),
+        Perbaikan(id_perbaikan="PRB-2026-0002", id_work_order="REP-2026-00290", status_perbaikan="Selesai",
+                  catatan="Retakan ditutup dan permukaan diratakan", foto_sesudah="static/uploads/selesai_dharmahusada.jpg",
+                  tanggal_selesai=jam(10, 15), dicatat_oleh="Budi Santoso", waktu=jam(10, 15)),
+    ])
+    db.add_all([
+        Notifikasi(id_notifikasi="NTF-SEED-0001", id_laporan="LAP-2026-0001", id_warga="USR-01",
+                   judul="Laporan diverifikasi",
+                   pesan="Laporan Anda telah diverifikasi dan disetujui oleh Dinas PUPR. (Laporan LAP-2026-0001, tiket REP-2026-00341)",
+                   status_baca=False, waktu_kirim=jam(20, 13)),
+        Notifikasi(id_notifikasi="NTF-SEED-0002", id_laporan="LAP-2026-0003", id_warga="USR-01",
+                   judul="Perbaikan selesai",
+                   pesan="Perbaikan jalan pada laporan Anda telah selesai. (Laporan LAP-2026-0003, tiket REP-2026-00290)",
+                   status_baca=True, waktu_kirim=jam(10, 15)),
+    ])
 
     db.commit()
     db.close()

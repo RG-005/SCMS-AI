@@ -98,3 +98,92 @@ def login_as(browser, live_server):
 
     _login.reset = lambda: status.update(akun=None)
     return _login
+
+
+# --------------------------------------------------------------------------- #
+# Sprint 2 helpers
+# --------------------------------------------------------------------------- #
+AKUN_PENILIK = "budi.santoso@dpupr.surabaya.go.id"
+
+
+def _jpeg_bytes() -> bytes:
+    import io
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.new("RGB", (64, 48), (110, 110, 110)).save(buf, "JPEG")
+    return buf.getvalue()
+
+
+@pytest.fixture(scope="session")
+def foto_uji(tmp_path_factory):
+    """foto_uji("survei_0001.jpg") -> absolute path of a real small JPEG with that name (for file inputs)."""
+    folder = tmp_path_factory.mktemp("foto_uji")
+
+    def _buat(nama: str) -> str:
+        path = folder / nama
+        if not path.exists():
+            path.write_bytes(_jpeg_bytes())
+        return str(path)
+
+    return _buat
+
+
+@pytest.fixture(scope="session")
+def pilih_opsi(browser):
+    """Select a <select> option by its visible text (works for any WebDriver)."""
+    def _pilih(element_id: str, teks: str):
+        ok = browser.execute_script(
+            "var s = document.getElementById(arguments[0]);"
+            "for (var i = 0; i < s.options.length; i++) {"
+            "  if (s.options[i].text.trim() === arguments[1]) { s.selectedIndex = i; return true; }"
+            "} return false;", element_id, teks)
+        assert ok, f"Opsi '{teks}' tidak ada di #{element_id}"
+    return _pilih
+
+
+@pytest.fixture
+def alur():
+    """Bring a citizen report's ticket to a given stage through the real controllers."""
+    from app.database import SessionLocal
+    from app.models.entities import Laporan, WorkOrder
+    from app.controllers.kontrol_inspeksi import KontrolInspeksi
+    from app.controllers.kontrol_penanganan import KontrolPenanganan
+
+    def id_wo(id_laporan: str) -> str:
+        db = SessionLocal()
+        try:
+            return db.get(Laporan, id_laporan).id_work_order
+        finally:
+            db.close()
+
+    def status(id_laporan: str) -> str:
+        db = SessionLocal()
+        try:
+            return db.get(WorkOrder, id_wo(id_laporan)).status_work_order
+        finally:
+            db.close()
+
+    def _jalankan(fungsi):
+        db = SessionLocal()
+        try:
+            hasil = fungsi(db)
+            assert hasil["success"], hasil["message"]
+        finally:
+            db.close()
+
+    def sampai_terinspeksi(id_laporan: str):
+        _jalankan(lambda db: KontrolInspeksi(db).simpan_inspeksi(
+            id_wo(id_laporan), "PNL-01", "2m x 1.5m x 0.15m", "Lapisan aspal terkelupas", "Tambal Hotmix"))
+
+    def sampai_dalam_proses(id_laporan: str):
+        sampai_terinspeksi(id_laporan)
+        _jalankan(lambda db: KontrolPenanganan(db).terbitkan_spk(
+            id_wo(id_laporan), "SPK/PUPR/XI/2026/001", "Satgas Rayon Gubeng", "Dalam Proses", AKUN_ADMIN))
+
+    def sampai_selesai(id_laporan: str):
+        sampai_dalam_proses(id_laporan)
+        _jalankan(lambda db: KontrolPenanganan(db).perbarui_progres(
+            id_wo(id_laporan), "Selesai", "Lubang sudah ditambal", "selesai.jpg", _jpeg_bytes(), "Budi Santoso"))
+
+    return {"id_wo": id_wo, "status": status, "Terinspeksi": sampai_terinspeksi,
+            "Dalam Proses": sampai_dalam_proses, "Selesai": sampai_selesai}

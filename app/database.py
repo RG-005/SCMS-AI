@@ -23,8 +23,16 @@ Base = declarative_base()
 # sudah ada, jadi kolom ini ditambahkan di sini agar database lama tetap bisa dipakai.
 KOLOM_TAMBAHAN = {
     "warga": {"alamat_domisili": "VARCHAR(255)"},
-    "work_order": {"latitude": "FLOAT", "longitude": "FLOAT"},
+    "wilayah": {"kecamatan": "VARCHAR(100)"},
+    "penilik_jalan": {"nip": "VARCHAR(20)"},
+    "work_order": {"latitude": "FLOAT", "longitude": "FLOAT", "nomor_spk": "VARCHAR(50)",
+                   "tim_pelaksana": "VARCHAR(100)", "tanggal_selesai": "TIMESTAMP"},
     "laporan": {"latitude": "FLOAT", "longitude": "FLOAT"},
+    "inspeksi": {"id_work_order": "VARCHAR(20)", "dimensi_kerusakan": "VARCHAR(50)",
+                 "rekomendasi_penanganan": "VARCHAR(50)"},
+    "perbaikan": {"catatan": "TEXT", "dicatat_oleh": "VARCHAR(50)", "waktu": "TIMESTAMP"},
+    "notifikasi": {"judul": "VARCHAR(100)", "waktu_kirim": "TIMESTAMP"},
+    "rating": {"tanggal_rating": "TIMESTAMP"},
 }
 
 

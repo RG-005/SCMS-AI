@@ -31,6 +31,8 @@
                 <a href="/Beranda" class="hidden sm:inline-flex items-center space-x-1.5 text-xs font-semibold text-slate-600 hover:text-[#0B5ED7] px-3 py-1.5 rounded-lg hover:bg-slate-50 transition">
                     <span>&larr; Beranda Warga</span>
                 </a>
+                <a href="/lacak" class="hidden sm:inline-flex items-center text-xs font-semibold text-slate-600 hover:text-[#0B5ED7] px-3 py-1.5 rounded-lg hover:bg-slate-50 transition">Lacak Laporan</a>
+                <a href="/notifikasi" id="menuNotifikasi" class="relative inline-flex items-center gap-1 text-xs font-semibold text-slate-600 hover:text-[#0B5ED7] px-3 py-1.5 rounded-lg hover:bg-slate-50 transition">Notifikasi{% if jumlah_notif %}<span id="badgeNotif" class="ml-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] font-extrabold inline-flex items-center justify-center">{{ jumlah_notif }}</span>{% endif %}</a>
                 <div class="flex items-center space-x-2.5 pl-2 border-l border-slate-200">
                     <div class="w-8 h-8 rounded-full bg-[#0B5ED7] text-white flex items-center justify-center font-bold text-xs">{{ (pengguna.nama or '?')[:2] | upper }}</div>
                     <div class="hidden sm:block leading-tight">
@@ -75,8 +77,9 @@
                             <h3 class="text-base font-extrabold text-emerald-950">{{ hasil.message }}</h3>
                             <div class="mt-2.5 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-white/80 p-3 rounded-lg border border-emerald-200">
                                 <div>
-                                    <span class="text-[10px] text-slate-500 block">Nomor Tiket</span>
-                                    <strong class="text-slate-900">{{ hasil.ticket_id }}</strong>
+                                    <span class="text-[10px] text-slate-500 block">ID Laporan / Tiket</span>
+                                    <a class="font-bold text-[#0B5ED7] underline" href="/lacak?id={{ hasil.id_laporan }}">{{ hasil.id_laporan }}</a>
+                                    <span class="block text-[10px] text-slate-500">{{ hasil.ticket_id }}</span>
                                 </div>
                                 <div>
                                     <span class="text-[10px] text-slate-500 block">Status Awal</span>

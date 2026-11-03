@@ -1,0 +1,100 @@
+{% extends "_layout.html" %}
+{% block judul %}Tugas {{ wo.id_work_order }}{% endblock %}
+{% block menu_aktif %}tugas{% endblock %}
+{% block konten %}
+<a href="/TugasLapangan" class="inline-block text-xs font-semibold text-slate-600 hover:text-[#0B5ED7] mb-3">&larr; Kembali ke Tugas Lapangan</a>
+
+<div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 mb-5">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+            <span class="font-mono text-xs font-bold text-[#0B5ED7]">{{ wo.id_work_order }}</span>
+            {% for lap in laporan %}<span class="ml-1 font-mono text-[11px] text-slate-500">{{ lap.id_laporan }}</span>{% endfor %}
+            <h2 class="text-lg font-extrabold text-slate-900 mt-1">{{ wo.kategori_kerusakan }}</h2>
+            <p class="text-xs text-slate-500">{{ wo.lokasi_jalan }}{% if wo.latitude is not none %} &bull; <a class="text-[#0B5ED7] underline" target="_blank" rel="noopener" href="https://www.openstreetmap.org/?mlat={{ wo.latitude }}&mlon={{ wo.longitude }}#map=18/{{ wo.latitude }}/{{ wo.longitude }}">Buka peta</a>{% endif %}</p>
+        </div>
+        <span id="statusTiket" class="text-xs font-extrabold px-3 py-1 rounded-full bg-blue-50 text-[#0B5ED7] border border-blue-200">{{ wo.status_work_order }}</span>
+    </div>
+    <div class="grid grid-cols-3 gap-3 text-xs mt-4">
+        <div class="p-3 rounded-lg bg-slate-50 border border-slate-200"><span class="text-[10px] text-slate-500 block">Severity AI{% if ai_simulasi %} (simulasi){% endif %}</span><strong>{{ wo.severity_score_kasus }}</strong></div>
+        <div class="p-3 rounded-lg bg-slate-50 border border-slate-200"><span class="text-[10px] text-slate-500 block">Risk Score</span><strong>{{ wo.risk_score }} ({{ wo.prioritas }})</strong></div>
+        <div class="p-3 rounded-lg bg-slate-50 border border-slate-200"><span class="text-[10px] text-slate-500 block">Pelapor</span><strong>{{ wo.exposure_count }}</strong></div>
+    </div>
+    {% for lap in laporan %}
+    <p class="mt-3 text-xs text-slate-700"><strong>{{ lap.id_laporan }}:</strong> {{ lap.deskripsi }}</p>
+    {% endfor %}
+</div>
+
+{% if bisa_inspeksi %}
+<!-- UC-E: Form hasil inspeksi lapangan -->
+<form id="formInspeksi" method="post" action="/TugasLapangan/{{ wo.id_work_order }}/inspeksi" enctype="multipart/form-data"
+      class="bg-white rounded-2xl border-2 border-[#0B5ED7] shadow-sm p-5 space-y-4">
+    <h3 class="text-sm font-extrabold text-slate-900">Hasil Inspeksi Lapangan</h3>
+    <div>
+        <label for="dimensi_kerusakan" class="block text-xs font-bold text-slate-700 mb-1">Dimensi Kerusakan (panjang x lebar x kedalaman) *</label>
+        <input id="dimensi_kerusakan" name="dimensi_kerusakan" value="{{ form.dimensi_kerusakan or '' }}" maxlength="50" placeholder="2m x 1.5m x 0.15m"
+               class="w-full border border-slate-300 rounded-xl px-3.5 py-3 text-sm">
+    </div>
+    <div>
+        <label for="catatan_teknis" class="block text-xs font-bold text-slate-700 mb-1">Catatan Teknis</label>
+        <textarea id="catatan_teknis" name="catatan_teknis" rows="3" class="w-full border border-slate-300 rounded-xl px-3.5 py-3 text-sm" placeholder="Kondisi lapisan aspal, genangan, dsb.">{{ form.catatan_teknis or '' }}</textarea>
+    </div>
+    <div>
+        <label for="rekomendasi" class="block text-xs font-bold text-slate-700 mb-1">Rekomendasi Penanganan *</label>
+        <select id="rekomendasi" name="rekomendasi" class="w-full border border-slate-300 rounded-xl px-3.5 py-3 text-sm bg-white">
+            <option value="">— Pilih rekomendasi —</option>
+            {% for r in rekomendasi %}<option value="{{ r }}" {{ 'selected' if form.rekomendasi == r else '' }}>{{ r }}</option>{% endfor %}
+        </select>
+    </div>
+    <div>
+        <label for="foto_survei" class="block text-xs font-bold text-slate-700 mb-1">Foto Survei (JPG/PNG, maks. 10 MB)</label>
+        <input id="foto_survei" name="foto_survei" type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png" capture="environment"
+               class="block w-full text-sm file:mr-3 file:py-3 file:px-4 file:rounded-xl file:border-0 file:bg-blue-50 file:text-[#0B5ED7] file:font-bold">
+    </div>
+    <button type="submit" id="simpanInspeksi" class="w-full sm:w-auto bg-[#0B5ED7] hover:bg-blue-700 text-white font-extrabold text-sm px-8 py-4 rounded-xl">Simpan Hasil Inspeksi</button>
+</form>
+{% endif %}
+
+{% if inspeksi %}
+<div id="ringkasanInspeksi" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 mt-5 text-xs text-slate-700">
+    <h3 class="text-sm font-extrabold text-slate-900 mb-2">Hasil Inspeksi Tercatat</h3>
+    <p>Dimensi: <strong>{{ inspeksi.dimensi_kerusakan or '-' }}</strong> &bull; Rekomendasi: <strong>{{ inspeksi.rekomendasi_penanganan or '-' }}</strong></p>
+    <p class="mt-1">Catatan: {{ inspeksi.hasil_temuan }}</p>
+    {% if wo.nomor_spk %}<p class="mt-2">SPK: <strong class="font-mono">{{ wo.nomor_spk }}</strong> &bull; Tim: <strong>{{ wo.tim_pelaksana }}</strong></p>{% endif %}
+</div>
+{% endif %}
+
+{% if bisa_update_perbaikan %}
+<!-- UC-F: Update progres perbaikan -->
+<form id="formProgres" method="post" action="/TugasLapangan/{{ wo.id_work_order }}/progres" enctype="multipart/form-data"
+      class="bg-white rounded-2xl border-2 border-emerald-600 shadow-sm p-5 space-y-4 mt-5">
+    <h3 class="text-sm font-extrabold text-slate-900">Perbarui Status Penanganan</h3>
+    <div>
+        <label for="status_baru" class="block text-xs font-bold text-slate-700 mb-1">Status Progres</label>
+        <select id="status_baru" name="status_baru" class="w-full border border-slate-300 rounded-xl px-3.5 py-3 text-sm bg-white">
+            {% for st in ['Dalam Proses', 'Selesai'] %}<option value="{{ st }}" {{ 'selected' if form.status_baru == st else '' }}>{{ st }}</option>{% endfor %}
+        </select>
+    </div>
+    <div>
+        <label for="catatan_progres" class="block text-xs font-bold text-slate-700 mb-1">Catatan Progres / Penyelesaian</label>
+        <textarea id="catatan_progres" name="catatan_progres" rows="3" class="w-full border border-slate-300 rounded-xl px-3.5 py-3 text-sm">{{ form.catatan_progres or '' }}</textarea>
+    </div>
+    <div>
+        <label for="foto_selesai" class="block text-xs font-bold text-slate-700 mb-1">Foto Bukti Perbaikan (wajib jika Selesai)</label>
+        <input id="foto_selesai" name="foto_selesai" type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png" capture="environment"
+               class="block w-full text-sm file:mr-3 file:py-3 file:px-4 file:rounded-xl file:border-0 file:bg-emerald-50 file:text-emerald-800 file:font-bold">
+    </div>
+    <button type="submit" id="perbaruiStatus" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm px-8 py-4 rounded-xl">Perbarui Status Penanganan</button>
+</form>
+{% endif %}
+
+{% if riwayat_perbaikan %}
+<div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 mt-5">
+    <h3 class="text-sm font-extrabold text-slate-900 mb-2">Riwayat Perbaikan</h3>
+    <ul class="text-xs divide-y divide-slate-100">
+        {% for pr in riwayat_perbaikan %}
+        <li class="py-2 flex justify-between gap-3"><span><strong>{{ pr.status_perbaikan }}</strong> — {{ pr.catatan or '-' }}{% if pr.foto_sesudah %} <a class="text-[#0B5ED7] underline" href="/{{ pr.foto_sesudah }}" target="_blank">foto</a>{% endif %}</span><span class="text-slate-400 font-mono shrink-0">{{ pr.waktu | wib }}</span></li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+{% endblock %}

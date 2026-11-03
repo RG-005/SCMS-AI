@@ -28,7 +28,10 @@ class KontrolAutentikasi:
             id_akun, email = admin.id_admin, admin.email_admin
 
         if not akun:
-            penilik = self.db.query(PenilikJalan).filter(func.lower(PenilikJalan.email_penilik) == identifier_lower).first()
+            # Penilik Jalan may log in with email or NIP (accounts created in Data Master may have no email)
+            penilik = self.db.query(PenilikJalan).filter(
+                (func.lower(PenilikJalan.email_penilik) == identifier_lower) | (PenilikJalan.nip == identifier)
+            ).first()
             if penilik:
                 akun, peran, nama = penilik, 'Penilik Jalan', penilik.nama_penilik
                 id_akun, email = penilik.id_penilik, penilik.email_penilik
@@ -52,7 +55,7 @@ class KontrolAutentikasi:
         if not akun.is_active:
             return {'success': False, 'message': 'Akun Anda tidak aktif, silakan hubungi administrator', 'redirect_url': '/Login'}
 
-        redirect_url = '/Beranda' if peran == 'Warga' else '/Dashboard'
+        redirect_url = {'Warga': '/Beranda', 'Penilik Jalan': '/TugasLapangan'}.get(peran, '/Dashboard')
         return {
             'success': True,
             'id': id_akun,

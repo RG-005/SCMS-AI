@@ -20,7 +20,7 @@ HALAMAN_AWAL = {
     PERAN_WARGA: "/Beranda",
     PERAN_ADMIN: "/Dashboard",
     PERAN_KABID: "/Dashboard",
-    PERAN_PENILIK: "/Dashboard",
+    PERAN_PENILIK: "/TugasLapangan",
 }
 
 

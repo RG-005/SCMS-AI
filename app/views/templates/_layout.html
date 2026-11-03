@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block judul %}SCMS PUPR Kota Surabaya{% endblock %} - SCMS PUPR</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .hidden { display: none; }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-[#F8FAFC] text-slate-800 min-h-screen flex flex-col">
+    {% set peran = pengguna.peran if pengguna else None %}
+    {% set warga = peran == 'Warga' %}
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+        <div class="{{ 'max-w-5xl' if warga else 'max-w-[1360px]' }} mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
+            <a href="{{ '/Beranda' if warga else ('/TugasLapangan' if peran == 'Penilik Jalan' else '/Dashboard') }}" class="flex items-center space-x-3 min-w-0">
+                <img src="/static/images/logo.png" alt="Logo SCMS PUPR" class="w-10 h-10 object-contain shrink-0" onerror="this.remove()">
+                <div class="min-w-0">
+                    <h1 class="font-extrabold text-slate-900 text-[15px] sm:text-[16px] tracking-tight leading-snug truncate">{{ 'SCMS Dinas PUPR Kota Surabaya' if warga else 'PUPR Kota Surabaya – SCMS' }}</h1>
+                    <p class="text-[11px] text-slate-500 font-medium truncate">{{ 'Portal Pelaporan Kerusakan Infrastruktur Jalan (Warga)' if warga else 'Portal Internal PPK & Pengawas Teknis Lapangan' }}</p>
+                </div>
+            </a>
+            <div class="flex items-center space-x-2 sm:space-x-3 shrink-0">
+                {% if warga %}
+                <a href="/notifikasi" id="menuNotifikasi" class="relative inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-[#0B5ED7] px-2.5 py-1.5 rounded-lg hover:bg-slate-50">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                    <span class="hidden sm:inline">Notifikasi</span>
+                    {% if jumlah_notif %}<span id="badgeNotif" class="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] font-extrabold flex items-center justify-center">{{ jumlah_notif }}</span>{% endif %}
+                </a>
+                {% endif %}
+                <div class="flex items-center space-x-2.5 pl-2 border-l border-slate-200">
+                    <div class="w-8 h-8 rounded-full {{ 'bg-[#0B5ED7]' if warga else 'bg-[#0F2942]' }} text-white flex items-center justify-center font-bold text-xs">{{ (pengguna.nama or '?')[:2] | upper }}</div>
+                    <div class="hidden md:block leading-tight">
+                        <p class="text-xs font-bold text-slate-800">{{ pengguna.nama }}</p>
+                        <p class="text-[10px] text-slate-500">{{ peran }}</p>
+                    </div>
+                </div>
+                <a href="/Logout" class="text-xs font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-3 py-1.5 rounded-lg">Keluar</a>
+            </div>
+        </div>
+        <span class="hidden">{% block menu_aktif %}{% endblock %}</span>
+        {% set aktif = self.menu_aktif() | trim %}
+        <nav class="{{ 'max-w-5xl' if warga else 'max-w-[1360px]' }} mx-auto px-4 sm:px-6 flex items-center space-x-6 text-xs font-semibold overflow-x-auto border-t border-slate-100">
+            {% macro tab(href, label, kunci, aktif) -%}
+            <a href="{{ href }}" class="py-3 whitespace-nowrap border-b-2 {{ 'text-[#0B5ED7] border-[#0B5ED7] font-bold' if aktif == kunci else 'text-slate-500 hover:text-slate-800 border-transparent' }}">{{ label }}</a>
+            {%- endmacro %}
+            {% if warga %}
+                {{ tab('/Beranda', 'Beranda', 'beranda', aktif) }}
+                {{ tab('/lapor', 'Buat Laporan', 'lapor', aktif) }}
+                {{ tab('/lacak', 'Riwayat & Lacak Laporan', 'lacak', aktif) }}
+                {{ tab('/notifikasi', 'Notifikasi', 'notifikasi', aktif) }}
+            {% else %}
+                {% if peran == 'Penilik Jalan' %}{{ tab('/TugasLapangan', 'Tugas Lapangan', 'tugas', aktif) }}{% endif %}
+                {{ tab('/Dashboard', 'Dashboard Prioritas & Peta GIS', 'dashboard', aktif) }}
+                {% if peran in ['Admin', 'Kepala Bidang'] %}{{ tab('/verifikasi', 'Verifikasi Laporan', 'verifikasi', aktif) }}{% endif %}
+                {{ tab('/work-orders', 'Penugasan & Work Order (SPK)', 'work-orders', aktif) }}
+                {% if peran in ['Admin', 'Kepala Bidang'] %}{{ tab('/master-data', 'Data Master', 'master', aktif) }}{% endif %}
+            {% endif %}
+        </nav>
+    </header>
+
+    <main class="{{ 'max-w-5xl' if warga else 'max-w-[1360px]' }} mx-auto px-4 sm:px-6 py-6 flex-grow w-full">
+        {% set gaya = {'sukses': 'bg-emerald-50 border-emerald-200 text-emerald-900', 'gagal': 'bg-red-50 border-red-200 text-red-800', 'peringatan': 'bg-amber-50 border-amber-300 text-amber-900'} %}
+        {# the page's own message gets id="pesanSistem"; an earlier one-time flash is shown above it #}
+        {% if flash and pesan %}
+        <div role="status" class="mb-3 p-4 rounded-xl border text-xs font-bold {{ gaya.get(flash.jenis, gaya['sukses']) }}">{{ flash.pesan }}</div>
+        {% endif %}
+        {% set pesan_tampil = pesan or flash %}
+        {% if pesan_tampil %}
+        <div id="pesanSistem" role="status" class="mb-5 p-4 rounded-xl border text-xs font-bold {{ gaya.get(pesan_tampil.jenis, gaya['sukses']) }}">{{ pesan_tampil.pesan }}</div>
+        {% endif %}
+        {% block konten %}{% endblock %}
+    </main>
+
+    <footer class="bg-white border-t border-slate-200 py-4 px-6 mt-10 text-center text-[11px] text-slate-500">
+        &copy; 2026 Dinas Sumber Daya Air dan Bina Marga Kota Surabaya &bull; Kelompok 7 — Kelas I3
+    </footer>
+    {% block skrip %}{% endblock %}
+</body>
+</html>

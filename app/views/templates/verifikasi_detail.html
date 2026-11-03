@@ -51,12 +51,24 @@
             <a href="/Dashboard" class="py-3 text-slate-500 hover:text-slate-800 border-b-2 border-transparent flex items-center space-x-1.5 whitespace-nowrap transition">
                 <span>Dashboard Prioritas & Peta GIS</span>
             </a>
+            {% if pengguna.peran in ['Admin', 'Kepala Bidang'] %}
             <a href="/verifikasi" class="py-3 text-[#0B5ED7] border-b-2 border-[#0B5ED7] flex items-center space-x-1.5 whitespace-nowrap font-bold">
                 <span>Verifikasi Laporan</span>
             </a>
+            {% endif %}
             <a href="/work-orders" class="py-3 text-slate-500 hover:text-slate-800 border-b-2 border-transparent flex items-center space-x-1.5 whitespace-nowrap transition">
                 <span>Penugasan & Work Order (SPK)</span>
             </a>
+            {% if pengguna.peran in ['Admin', 'Kepala Bidang'] %}
+            <a href="/master-data" class="py-3 text-slate-500 hover:text-slate-800 border-b-2 border-transparent flex items-center space-x-1.5 whitespace-nowrap transition">
+                <span>Data Master</span>
+            </a>
+            {% endif %}
+            {% if pengguna.peran == 'Penilik Jalan' %}
+            <a href="/TugasLapangan" class="py-3 text-slate-500 hover:text-slate-800 border-b-2 border-transparent flex items-center space-x-1.5 whitespace-nowrap transition">
+                <span>Tugas Lapangan</span>
+            </a>
+            {% endif %}
         </div>
     </header>
 
@@ -250,7 +262,7 @@
                         Tiket <strong>{{ detail.wo.id_work_order }}</strong> memiliki Risk Score <strong>{{ detail.risk_score_label }}</strong> yang berada pada rentang ambigu. Pilih salah satu keputusan di bawah:
                     </p>
 
-                    {% if boleh_aksi %}
+                    {% if boleh_aksi and detail.bisa_diputuskan %}
                     <!-- Opsi A: Tugaskan Inspeksi Tambahan (REQ-VER-5 / Skenario 3) -->
                     <form action="/verifikasi/{{ detail.wo.id_work_order }}/inspect" method="post" class="mt-4 pt-4 border-t border-slate-100 space-y-3">
                         <div>
@@ -258,8 +270,8 @@
                                 1. Pilih Penilik Jalan untuk Pengecekan Fisik ({{ detail.nama_wilayah }}):
                             </label>
                             <select name="nama_penilik" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800">
-                                {% for nama in detail.daftar_penilik %}
-                                    <option value="{{ nama }}">{{ nama }}</option>
+                                {% for id_p, label in detail.opsi_penilik %}
+                                    <option value="{{ id_p }}">{{ label }}</option>
                                 {% else %}
                                     <option value="" disabled selected>Tidak ada Penilik Jalan di wilayah ini</option>
                                 {% endfor %}
@@ -278,7 +290,7 @@
                         </button>
                     </form>
                     {% else %}
-                    <p class="mt-4 p-3 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-600">Mode lihat saja: hanya Admin (PPK) yang dapat mengambil keputusan verifikasi.</p>
+                    <p class="mt-4 p-3 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-600">{% if not detail.bisa_diputuskan %}Tiket berstatus <strong>{{ detail.wo.status_work_order }}</strong>: keputusan verifikasi sudah tidak dapat diubah.{% else %}Mode lihat saja: hanya Admin (PPK) yang dapat mengambil keputusan verifikasi.{% endif %}</p>
                     {% endif %}
                 </div>
 
@@ -293,7 +305,7 @@
                         Skor risiko tiket <strong>{{ detail.wo.id_work_order }}</strong> berada di atas ambang batas jelas (<strong>{{ detail.risk_score_label }}</strong>). Setujui tiket ini agar langsung masuk ke antrean penugasan Penilik Jalan.
                     </p>
 
-                    {% if boleh_aksi %}
+                    {% if boleh_aksi and detail.bisa_diputuskan %}
                     <form action="/verifikasi/{{ detail.wo.id_work_order }}/approve" method="post" class="mt-4">
                         <button type="submit" class="w-full bg-[#0B5ED7] hover:bg-blue-700 text-white font-bold text-xs py-3 px-5 rounded-lg shadow-sm flex items-center justify-center space-x-2 transition">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
@@ -301,7 +313,7 @@
                         </button>
                     </form>
                     {% else %}
-                    <p class="mt-4 p-3 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-600">Mode lihat saja: hanya Admin (PPK) yang dapat mengambil keputusan verifikasi.</p>
+                    <p class="mt-4 p-3 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-600">{% if not detail.bisa_diputuskan %}Tiket berstatus <strong>{{ detail.wo.status_work_order }}</strong>: keputusan verifikasi sudah tidak dapat diubah.{% else %}Mode lihat saja: hanya Admin (PPK) yang dapat mengambil keputusan verifikasi.{% endif %}</p>
                     {% endif %}
                 </div>
                 {% endif %}

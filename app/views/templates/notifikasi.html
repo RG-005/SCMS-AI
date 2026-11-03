@@ -1,0 +1,38 @@
+{% extends "_layout.html" %}
+{% block judul %}Notifikasi{% endblock %}
+{% block menu_aktif %}notifikasi{% endblock %}
+{% block konten %}
+<div class="flex flex-wrap items-end justify-between gap-3 mb-5">
+    <div>
+        <span class="text-[10px] font-extrabold text-[#0B5ED7] uppercase tracking-wider">UC-I • Notifikasi Status Laporan</span>
+        <h2 class="text-2xl font-extrabold text-slate-900 tracking-tight">Notifikasi</h2>
+        <p class="text-xs text-slate-500 mt-1">{{ jumlah_notif }} belum dibaca. Klik notifikasi untuk membuka progres laporan terkait.</p>
+    </div>
+    {% if jumlah_notif %}
+    <form method="post" action="/notifikasi/baca-semua">
+        <button type="submit" class="text-xs font-bold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 px-3.5 py-2 rounded-lg">Tandai semua sudah dibaca</button>
+    </form>
+    {% endif %}
+</div>
+
+<ul id="daftarNotifikasi" class="bg-white rounded-2xl border border-slate-200 shadow-sm divide-y divide-slate-100">
+    {% for n in daftar_notif %}
+    <li>
+        <a id="notif-{{ n.id_notifikasi }}" href="/notifikasi/{{ n.id_notifikasi }}/buka"
+           class="notif-item flex items-start gap-3 p-4 hover:bg-slate-50 {{ 'notif-belum-dibaca bg-blue-50/50' if not n.status_baca else '' }}">
+            <span class="mt-1.5 w-2.5 h-2.5 rounded-full shrink-0 {{ 'bg-[#0B5ED7]' if not n.status_baca else 'bg-slate-200' }}" aria-hidden="true"></span>
+            <span class="flex-grow min-w-0">
+                <span class="flex flex-wrap justify-between gap-2">
+                    <strong class="text-sm {{ 'text-slate-900' if not n.status_baca else 'text-slate-600 font-semibold' }}">{{ n.judul or 'Pembaruan laporan' }}</strong>
+                    <span class="text-[11px] text-slate-400 font-mono">{{ n.waktu_kirim | wib }}</span>
+                </span>
+                <span class="block text-xs text-slate-600 mt-0.5">{{ n.pesan }}</span>
+                {% if not n.status_baca %}<span class="sr-only">Belum dibaca</span>{% endif %}
+            </span>
+        </a>
+    </li>
+    {% else %}
+    <li class="p-8 text-center text-sm text-slate-500">Belum ada notifikasi.</li>
+    {% endfor %}
+</ul>
+{% endblock %}

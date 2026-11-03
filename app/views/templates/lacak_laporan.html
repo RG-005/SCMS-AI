@@ -1,0 +1,160 @@
+{% extends "_layout.html" %}
+{% block judul %}Riwayat & Lacak Laporan{% endblock %}
+{% block menu_aktif %}lacak{% endblock %}
+{% block konten %}
+<div class="mb-5">
+    <span class="text-[10px] font-extrabold text-[#0B5ED7] uppercase tracking-wider">UC-C • Riwayat & Lacak Laporan</span>
+    <h2 class="text-2xl font-extrabold text-slate-900 tracking-tight">Lacak Progres Laporan Anda</h2>
+    <p class="text-xs text-slate-500 mt-1">Masukkan ID Laporan (contoh: LAP-2026-0001) atau pilih dari daftar laporan Anda.</p>
+</div>
+
+<form method="get" action="/lacak" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 mb-5 flex flex-col sm:flex-row gap-2">
+    <label for="cari_id" class="sr-only">ID Laporan</label>
+    <input type="text" id="cari_id" name="id" value="{{ cari_id }}" placeholder="LAP-2026-0001" autocomplete="off"
+           class="flex-grow border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm font-mono font-semibold text-slate-900 uppercase focus:outline-none focus:ring-2 focus:ring-[#0B5ED7]">
+    <button type="submit" id="tombolCari" class="bg-[#0B5ED7] hover:bg-blue-700 text-white font-bold text-xs px-6 py-3 rounded-lg">Cari Laporan</button>
+</form>
+
+{% if pesan_cari %}
+<div id="pesanCari" role="alert" class="mb-5 p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs font-bold">{{ pesan_cari }}</div>
+{% endif %}
+
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <!-- Daftar laporan saya -->
+    <aside class="lg:col-span-4 order-2 lg:order-1">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+            <h3 class="text-sm font-extrabold text-slate-900 mb-3">Laporan Saya</h3>
+            <ul class="divide-y divide-slate-100 text-xs">
+                {% for lap in daftar_laporan %}
+                <li>
+                    <a href="/lacak?id={{ lap.id_laporan }}" class="flex items-center justify-between gap-2 py-2.5 px-2 rounded-lg hover:bg-slate-50 {{ 'bg-blue-50' if detail and detail.laporan.id_laporan == lap.id_laporan else '' }}">
+                        <span>
+                            <span class="font-mono font-bold text-[#0B5ED7] block">{{ lap.id_laporan }}</span>
+                            <span class="text-slate-500">{{ (lap.lokasi_teks or '-')[:40] }}</span>
+                        </span>
+                        <span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">{{ lap.work_order.status_work_order if lap.work_order else lap.status }}</span>
+                    </a>
+                </li>
+                {% else %}
+                <li class="py-4 text-slate-500 text-center">Belum ada laporan.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </aside>
+
+    <section class="lg:col-span-8 order-1 lg:order-2">
+    {% if detail %}
+        {% set lap = detail.laporan %}{% set wo = detail.wo %}
+        <div id="detailLaporan" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 mb-6">
+            <div class="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 pb-4 mb-4">
+                <div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="bg-slate-900 text-white text-xs font-extrabold px-2.5 py-0.5 rounded font-mono">{{ lap.id_laporan }}</span>
+                        {% if wo %}<span class="text-[11px] text-slate-500">Tiket {{ wo.id_work_order }}</span>{% endif %}
+                    </div>
+                    <h3 class="text-lg font-extrabold text-slate-900 mt-2">{{ wo.kategori_kerusakan if wo else '-' }}</h3>
+                    <p class="text-xs text-slate-500">{{ lap.lokasi_teks }}</p>
+                </div>
+                <span id="statusLaporan" class="text-xs font-extrabold px-3 py-1 rounded-full bg-blue-50 text-[#0B5ED7] border border-blue-200">{{ detail.status }}</span>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs mb-4">
+                <div class="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                    <span class="text-[10px] text-slate-500 block">Severity Score AI{% if ai_simulasi %} (simulasi){% endif %}</span>
+                    <strong id="skorSeverity" class="text-base text-slate-900">{{ lap.severity_score }} / 10</strong>
+                </div>
+                <div class="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                    <span class="text-[10px] text-slate-500 block">Tingkat Prioritas</span>
+                    <strong id="prioritasLaporan" class="text-base text-slate-900">{{ wo.prioritas if wo else '-' }}</strong>
+                </div>
+                <div class="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                    <span class="text-[10px] text-slate-500 block">Risk Score Tiket</span>
+                    <strong class="text-base text-slate-900">{{ wo.risk_score if wo else '-' }}</strong>
+                </div>
+                <div class="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                    <span class="text-[10px] text-slate-500 block">Rekomendasi SLA</span>
+                    <strong class="text-base text-slate-900">{{ wo.sla_rekomendasi if wo else '-' }}</strong>
+                </div>
+            </div>
+            <p class="text-xs text-slate-700 p-3 rounded-lg bg-slate-50 border border-slate-200"><strong>Deskripsi:</strong> {{ lap.deskripsi }}</p>
+        </div>
+
+        <!-- Linimasa progres (Vertical Stepper) -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 mb-6">
+            <h3 class="text-sm font-extrabold text-slate-900 mb-4">Linimasa Progres Penanganan</h3>
+            <ol id="linimasa" class="relative border-l-2 border-slate-200 ml-3 space-y-5">
+                {% for tahap in detail.tahapan %}
+                <li class="tahap ml-5 {{ 'tahap-selesai' if tahap.selesai else '' }}">
+                    <span class="absolute -left-[11px] w-5 h-5 rounded-full border-2 flex items-center justify-center {{ 'bg-emerald-600 border-emerald-600 text-white' if tahap.selesai else 'bg-white border-slate-300' }}">
+                        {% if tahap.selesai %}<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>{% endif %}
+                    </span>
+                    <p class="text-xs font-bold {{ 'text-slate-900' if tahap.selesai else 'text-slate-400' }}">{{ tahap.label }}</p>
+                </li>
+                {% endfor %}
+            </ol>
+
+            <h4 class="text-xs font-extrabold text-slate-700 mt-6 mb-2">Riwayat Status</h4>
+            <ul id="riwayatStatus" class="text-xs divide-y divide-slate-100">
+                {% for r in detail.riwayat | reverse %}
+                <li class="py-2 flex flex-col sm:flex-row sm:justify-between gap-1">
+                    <span><strong class="text-slate-900">{{ r.status }}</strong>{% if r.keterangan %} — <span class="text-slate-600">{{ r.keterangan }}</span>{% endif %}</span>
+                    <span class="text-slate-400 font-mono shrink-0">{{ r.waktu | wib }}</span>
+                </li>
+                {% else %}
+                <li class="py-2 text-slate-500">Belum ada riwayat status.</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- Foto bukti: laporan, survei, selesai -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 mb-6">
+            <h3 class="text-sm font-extrabold text-slate-900 mb-3">Foto Bukti Penanganan</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-[11px] text-slate-600">
+                {% for judul, url in [('Foto laporan warga', lap.url_foto), ('Foto survei penilik', detail.inspeksi.url_foto_temuan if detail.inspeksi else None), ('Foto setelah perbaikan', detail.bukti_selesai.foto_sesudah if detail.bukti_selesai else None)] %}
+                <figure class="rounded-xl border border-slate-200 overflow-hidden bg-slate-50">
+                    <div class="h-32 bg-slate-200 flex items-center justify-center">
+                        {% if url %}<img src="/{{ url }}" alt="{{ judul }}" class="w-full h-full object-cover" onerror="this.replaceWith(document.createTextNode('Foto tidak tersedia'))">{% else %}<span>Belum ada</span>{% endif %}
+                    </div>
+                    <figcaption class="p-2 font-semibold">{{ judul }}</figcaption>
+                </figure>
+                {% endfor %}
+            </div>
+            {% if detail.inspeksi %}
+            <p class="mt-3 text-xs text-slate-700"><strong>Hasil survei:</strong> dimensi {{ detail.inspeksi.dimensi_kerusakan or '-' }}, rekomendasi {{ detail.inspeksi.rekomendasi_penanganan or '-' }}.</p>
+            {% endif %}
+        </div>
+
+        <!-- UC-J: Rating & ulasan -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+            <h3 class="text-sm font-extrabold text-slate-900 mb-1">Penilaian Hasil Perbaikan</h3>
+            {% if detail.rating %}
+            <div id="ratingTersimpan" class="text-xs text-slate-700">
+                <p class="text-xl text-amber-500 tracking-wider" aria-label="{{ detail.rating.nilai_bintang }} dari 5 bintang">{{ '★' * detail.rating.nilai_bintang }}<span class="text-slate-300">{{ '★' * (5 - detail.rating.nilai_bintang) }}</span></p>
+                {% if detail.rating.komentar %}<p class="mt-1">"{{ detail.rating.komentar }}"</p>{% endif %}
+            </div>
+            {% elif detail.boleh_rating %}
+            <form id="formRating" method="post" action="/lacak/{{ lap.id_laporan }}/rating" class="space-y-3">
+                <p class="text-xs text-slate-500">Bagaimana kualitas perbaikan jalan pada laporan ini?</p>
+                <fieldset>
+                    <legend class="sr-only">Rating bintang</legend>
+                    <div class="flex flex-row-reverse justify-end gap-1" id="pilihanBintang">
+                        {% for n in [5, 4, 3, 2, 1] %}
+                        <input type="radio" id="bintang-{{ n }}" name="nilai_bintang" value="{{ n }}" class="peer sr-only">
+                        <label for="bintang-{{ n }}" title="{{ n }} bintang" class="cursor-pointer text-3xl text-slate-300 hover:text-amber-400 peer-hover:text-amber-400 peer-checked:text-amber-500">★</label>
+                        {% endfor %}
+                    </div>
+                </fieldset>
+                <label for="komentar" class="block text-xs font-bold text-slate-700">Ulasan (opsional)</label>
+                <textarea id="komentar" name="komentar" rows="3" maxlength="1000" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#0B5ED7]" placeholder="Contoh: Perbaikan sangat cepat dan rapi">{{ form_rating.komentar or '' }}</textarea>
+                <button type="submit" id="tombolKirimUlasan" class="bg-[#0B5ED7] hover:bg-blue-700 text-white font-bold text-xs px-6 py-3 rounded-lg">Kirim Ulasan</button>
+            </form>
+            {% else %}
+            <p class="text-xs text-slate-500">Rating dapat diberikan setelah status laporan <strong>Selesai</strong>.</p>
+            {% endif %}
+        </div>
+    {% elif not pesan_cari %}
+        <div class="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500">Pilih laporan di daftar atau cari dengan ID Laporan.</div>
+    {% endif %}
+    </section>
+</div>
+{% endblock %}

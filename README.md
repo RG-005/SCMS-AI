@@ -5,7 +5,7 @@
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688?logo=fastapi&logoColor=white)
 ![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-ORM-red?logo=sqlite&logoColor=white)
-![Pytest](https://img.shields.io/badge/Pytest-17%20BDD%20%2B%203%20E2E%20%2B%2064%20unit-success?logo=pytest&logoColor=white)
+![Pytest](https://img.shields.io/badge/Pytest-29%20BDD%20%2B%203%20E2E%20%2B%20118%20unit-success?logo=pytest&logoColor=white)
 ![Leaflet GIS](https://img.shields.io/badge/Leaflet.js-OpenStreetMap-199900?logo=openstreetmap&logoColor=white)
 
 ---
@@ -54,6 +54,19 @@ Sistem ini mengintegrasikan tiga pilar kecerdasan utama:
 
 ---
 
+## 🧭 Cakupan Fitur Sprint 2 (12 Skenario BDD)
+
+Alur status tiket: `Dilaporkan → Disetujui / Menunggu Inspeksi → Ditugaskan → Terinspeksi → Dalam Proses → Selesai`. Setiap perubahan status dicatat di tabel `riwayat_status` (linimasa) dan otomatis membuat notifikasi untuk **setiap warga pelapor** tiket tersebut (`app/services/alur_status.py`).
+
+1. **UC-C — Lacak Status Laporan (`/lacak`, 2 skenario):** warga mencari laporannya dengan ID Laporan (`LAP-2026-0001`), melihat skor severity AI, prioritas, linimasa vertikal, riwayat status, serta foto laporan/survei/selesai. Laporan milik warga lain dianggap tidak ditemukan.
+2. **UC-D — Data Master (`/master-data`, 2 skenario):** Admin menambah wilayah rayon dan Penilik Jalan (NIP 18 digit, unik) serta mengubah ketersediaan petugas. Penilik baru mendapat kata sandi sementara yang ditampilkan sekali, dan bisa login dengan NIP.
+3. **UC-E — Inspeksi Lapangan (`/TugasLapangan`, 2 skenario):** Penilik Jalan hanya melihat tiket di wilayahnya, mengisi dimensi kerusakan, catatan teknis, rekomendasi penanganan, dan foto survei → status `Terinspeksi`.
+4. **UC-F — Update Perbaikan (3 skenario):** Admin menerbitkan SPK (nomor unik + tim pelaksana) dari halaman Work Order → `Dalam Proses`; Penilik/Admin memperbarui progres dan menutup tiket → `Selesai` (wajib foto bukti).
+5. **UC-I — Notifikasi (`/notifikasi`, 1 skenario):** daftar notifikasi dengan lencana jumlah belum dibaca; klik notifikasi menandainya terbaca dan membuka progres laporan.
+6. **UC-J — Rating & Ulasan (2 skenario):** setelah `Selesai`, warga memberi 1–5 bintang dan ulasan (sekali per laporan).
+
+---
+
 ## 📂 Struktur Direktori Proyek
 
 ```text
@@ -64,13 +77,20 @@ scms-ai-pupr/
 │   │   ├── kontrol_pelaporan.py     # Controller UC-A (Wizard 4-Step & AI CV/NLP)
 │   │   ├── kontrol_verifikasi.py    # Controller UC-B (Verifikasi & Skor Ambigu)
 │   │   ├── kontrol_penugasan.py     # Controller UC-G (Penugasan Penilik & SLA)
-│   │   └── kontrol_dashboard.py     # Controller UC-H (Dashboard Prioritas & GIS)
+│   │   ├── kontrol_dashboard.py     # Controller UC-H (Dashboard Prioritas & GIS)
+│   │   ├── kontrol_lacak.py         # Controller UC-C & UC-J (Lacak Laporan, Rating)
+│   │   ├── kontrol_master_data.py   # Controller UC-D (Wilayah & Penilik Jalan)
+│   │   ├── kontrol_inspeksi.py      # Controller UC-E (Inspeksi Lapangan)
+│   │   ├── kontrol_penanganan.py    # Controller UC-F (SPK & Progres Perbaikan)
+│   │   └── kontrol_notifikasi.py    # Controller UC-I (Notifikasi Warga)
 │   ├── models/
 │   │   └── entities.py              # Definisi 10 Tabel Physical Data Model (SQLAlchemy)
 │   ├── services/
 │   │   ├── ai_service.py            # Validasi foto, Computer Vision & NLP (simulasi / YOLOv8 / ST)
 │   │   ├── deduplikasi.py           # Aturan deduplikasi spasial-semantik (BR-3)
-│   │   └── risk_scoring.py          # Formula Risk Score, prioritas & SLA (BR-2)
+│   │   ├── risk_scoring.py          # Formula Risk Score, prioritas & SLA (BR-2)
+│   │   ├── alur_status.py           # Perubahan status + riwayat + notifikasi otomatis
+│   │   └── penyimpanan.py           # Simpan foto unggahan & pembuat ID berurutan
 │   ├── auth.py                      # Sesi login & pembatasan akses per peran
 │   ├── static/
 │   │   └── images/                  # Aset visual dan logo instansi
@@ -89,8 +109,9 @@ scms-ai-pupr/
 │   └── sequence_diagrams/           # File PlantUML (.puml) Sequence Diagram 5 Use Case
 ├── tests/
 │   ├── features/                    # Spesifikasi skenario Gherkin (.feature)
-│   ├── step_definitions/            # Pengujian otomatis Pytest-BDD (17 Skenario) + 3 E2E Selenium
-│   └── test_keamanan_dan_logika.py  # Uji cepat tanpa browser: hak akses, unggah foto, deduplikasi, risk score
+│   ├── step_definitions/            # Pytest-BDD: 17 skenario Sprint 1 + 12 skenario Sprint 2 + 3 E2E Selenium
+│   ├── test_keamanan_dan_logika.py  # Uji cepat Sprint 1: hak akses, unggah foto, deduplikasi, risk score
+│   └── test_sprint2.py              # Uji cepat Sprint 2: hak akses, kepemilikan data, alur status, notifikasi
 ├── pytest.ini                       # Konfigurasi pytest runner
 ├── requirements.txt                 # Daftar dependensi paket Python
 ├── requirements-ai.txt              # (Opsional) model AI sungguhan: ultralytics, sentence-transformers
@@ -137,8 +158,8 @@ python -m database.seed --force    # PostgreSQL: hanya jika memang ingin mereset
 ### 6. Jalankan Pengujian Otomatis
 Pengujian **selalu** memakai database terpisah `scms_test.db`, sehingga database di `.env` tidak tersentuh.
 ```bash
-pytest -v                                      # semua: 17 BDD + 3 E2E Selenium + 64 uji cepat (butuh Chrome/Edge)
-pytest tests/test_keamanan_dan_logika.py -v    # uji cepat saja, tanpa browser
+pytest -v                                      # semua: 29 BDD + 3 E2E Selenium + 118 uji cepat (butuh Chrome/Edge)
+pytest tests/test_keamanan_dan_logika.py tests/test_sprint2.py -v   # uji cepat saja, tanpa browser
 HEADLESS=1 pytest -v                           # browser tanpa jendela
 ```
 
@@ -172,11 +193,13 @@ Semua fitur AI melewati satu layanan (`app/services/ai_service.py`) dan backend-
 
 | Halaman / Aksi | Warga | Admin (PPK) | Kepala Bidang | Penilik Jalan |
 | :--- | :---: | :---: | :---: | :---: |
-| `/Beranda`, `/lapor` | ✅ | – | – | – |
+| `/Beranda`, `/lapor`, `/lacak`, `/notifikasi` | ✅ | – | – | – |
 | `/Dashboard` | – | ✅ | ✅ | ✅ |
 | `/verifikasi` | – | ✅ | 👁️ lihat saja | – |
 | `/work-orders` | – | ✅ | 👁️ lihat saja | 👁️ lihat saja |
-| Setujui / inspeksi / tugaskan | – | ✅ | – | – |
+| `/master-data` | – | ✅ | 👁️ lihat saja | – |
+| `/TugasLapangan` (inspeksi & progres) | – | – | – | ✅ (wilayahnya sendiri) |
+| Setujui / tugaskan / terbitkan SPK / ubah data master | – | ✅ | – | – |
 
 Halaman tanpa login dialihkan ke `/Login`; peran yang tidak berhak mendapat `403`. Sesi berakhir otomatis jika akun dinonaktifkan. *Exposure* tiket dihitung dari jumlah **warga berbeda** yang melapor, sehingga satu warga yang mengirim ulang laporan tidak menaikkan prioritas.
 
@@ -189,8 +212,9 @@ Seluruh akun pengujian di bawah ini menggunakan kata sandi: **`password123`**
 | Peran Aktor | Identifier (No. HP / Email) | Halaman Tujuan Setelah Login |
 | :--- | :--- | :--- |
 | **Warga** | `0812xxxxxxx` (atau NIK `3578010101900001`) | `/Beranda` (Form Pelaporan Warga) |
+| **Warga kedua** | `0813xxxxxxx` (pelapor tiket REP-2026-00298) | `/Beranda` |
 | **Admin (PPK)** | `admin@dpupr.surabaya.go.id` | `/Dashboard` (Dashboard Prioritas & Verifikasi) |
-| **Penilik Jalan** | `budi.santoso@dpupr.surabaya.go.id` | `/Dashboard` (halaman `/TugasLapangan` direncanakan Sprint 2) |
+| **Penilik Jalan** | `budi.santoso@dpupr.surabaya.go.id` (atau NIP `198501012015021001`) | `/TugasLapangan` (Inspeksi & Update Perbaikan) |
 | **Kepala Bidang** | `kabid@dpupr.surabaya.go.id` | `/Dashboard` (Monitoring Eksekutif & Analitik) |
 
 ---
