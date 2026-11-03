@@ -45,21 +45,21 @@ def laporan_milik_warga(ctx, id_laporan):
         db.close()
 
 
-def _cari(ctx, id_laporan):
+def _cari(ctx, id_laporan, klik_dan_tunggu):
     kolom = ctx["browser"].find_element(By.ID, "cari_id")
     kolom.clear()
     kolom.send_keys(id_laporan)
-    ctx["browser"].find_element(By.ID, "tombolCari").click()
+    klik_dan_tunggu(ctx["browser"].find_element(By.ID, "tombolCari"))
 
 
 @when(parsers.parse('the citizen searches for report ID "{id_laporan}"'))
-def cari_laporan(ctx, id_laporan):
-    _cari(ctx, id_laporan)
+def cari_laporan(ctx, klik_dan_tunggu, id_laporan):
+    _cari(ctx, id_laporan, klik_dan_tunggu)
 
 
 @when(parsers.parse('the citizen enters unregistered report ID "{id_laporan}"'))
-def cari_laporan_tidak_ada(ctx, id_laporan):
-    _cari(ctx, id_laporan)
+def cari_laporan_tidak_ada(ctx, klik_dan_tunggu, id_laporan):
+    _cari(ctx, id_laporan, klik_dan_tunggu)
 
 
 @then("the system displays the report details along with the AI severity score and priority level")

@@ -31,14 +31,14 @@ def ada_notif_baru(ctx, id_laporan):
 
 
 @when(parsers.parse('the citizen opens the "{menu}" menu and clicks the unread notification item'))
-def buka_notif(ctx, menu):
+def buka_notif(ctx, klik_dan_tunggu, menu):
     b = ctx["browser"]
     tautan_menu = b.find_element(By.ID, "menuNotifikasi")
     assert menu in tautan_menu.text
-    tautan_menu.click()
+    klik_dan_tunggu(tautan_menu)
     item = b.find_element(By.ID, f"notif-{ctx['id_notif']}")
     assert "notif-belum-dibaca" in item.get_attribute("class")
-    item.click()
+    klik_dan_tunggu(item)
 
 
 @then("the system updates the notification read status to read")

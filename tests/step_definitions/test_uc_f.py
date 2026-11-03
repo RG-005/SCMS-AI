@@ -52,9 +52,9 @@ def isi_spk(ctx, nomor, tim):
 
 
 @when(parsers.parse('the admin selects the progress status "{status}"'))
-def pilih_status_spk(ctx, pilih_opsi, status):
+def pilih_status_spk(ctx, pilih_opsi, klik_dan_tunggu, status):
     pilih_opsi("status_awal", status)
-    ctx["browser"].find_element(By.ID, "terbitkanSpk").click()
+    klik_dan_tunggu(ctx["browser"].find_element(By.ID, "terbitkanSpk"))
 
 
 @when(parsers.parse('the officer selects progress status "{status}"'))
@@ -80,10 +80,10 @@ def unggah_foto(ctx, foto_uji, foto):
 
 
 @when(parsers.parse('the officer clicks the "{tombol}" button'))
-def klik(ctx, tombol):
+def klik(ctx, klik_dan_tunggu, tombol):
     el = ctx["browser"].find_element(By.ID, TOMBOL[tombol])
     assert el.text.strip() == tombol
-    el.click()
+    klik_dan_tunggu(el)
 
 
 def _wo(ctx):

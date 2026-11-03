@@ -61,10 +61,10 @@ def kosongkan(ctx, pilih_opsi):
 
 
 @when(parsers.parse('the road inspector clicks the "{tombol}" button'))
-def klik(ctx, tombol):
+def klik(ctx, klik_dan_tunggu, tombol):
     el = ctx["browser"].find_element(By.ID, TOMBOL[tombol])
     assert el.text.strip() == tombol
-    el.click()
+    klik_dan_tunggu(el)
 
 
 def _inspeksi(ctx):

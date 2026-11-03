@@ -9,7 +9,7 @@ def reset_db_sebelum_selenium():
     seed_data()
 
 
-def test_selenium_bdd_uc_k_login_dan_register_nik(browser, live_server, login_as):
+def test_selenium_bdd_uc_k_login_dan_register_nik(browser, live_server, login_as, klik_dan_tunggu):
     """
     Skenario E2E Selenium 1 (UC-K + Register NIK):
     - Membuka halaman /Register di browser
@@ -30,15 +30,14 @@ def test_selenium_bdd_uc_k_login_dan_register_nik(browser, live_server, login_as
     browser.find_element(By.ID, "password").send_keys("password123")
     browser.find_element(By.ID, "konfirmasi_password").send_keys("password123")
 
-    # Klik tombol Daftar
-    browser.find_element(By.CSS_SELECTOR, "button[type='submit']").click()
-    time.sleep(0.5)
+    # Klik tombol Daftar (tunggu halaman hasil termuat)
+    klik_dan_tunggu(browser.find_element(By.CSS_SELECTOR, "button[type='submit']"))
 
     # Pastikan berhasil masuk ke halaman Login dan muncul notifikasi sukses
     assert "Registrasi berhasil" in browser.page_source
 
 
-def test_selenium_bdd_uc_k_login_admin_ke_dashboard(browser, live_server, login_as):
+def test_selenium_bdd_uc_k_login_admin_ke_dashboard(browser, live_server, login_as, klik_dan_tunggu):
     """
     Skenario E2E Selenium 2 (UC-K -> UC-H):
     - Admin membuka halaman /Login
@@ -57,9 +56,8 @@ def test_selenium_bdd_uc_k_login_admin_ke_dashboard(browser, live_server, login_
     input_pw.clear()
     input_pw.send_keys("password123")
 
-    # Klik tombol Masuk
-    browser.find_element(By.CSS_SELECTOR, "button[type='submit']").click()
-    time.sleep(0.8)
+    # Klik tombol Masuk (tunggu Dashboard termuat)
+    klik_dan_tunggu(browser.find_element(By.CSS_SELECTOR, "button[type='submit']"))
 
     # Verifikasi halaman berpindah ke Dashboard Prioritas (UC-H)
     assert "/Dashboard" in browser.current_url

@@ -75,6 +75,33 @@ def browser(live_server):
     driver.quit()
 
 
+def tunggu_halaman_baru(browser, aksi, batas: float = 15.0):
+    """Run `aksi` (e.g. a submit click) and wait until the NEXT page has fully loaded.
+
+    WebDriver's click() may return before a form POST and its redirect finish, so
+    checking the URL, page or database right after it is a race on slower machines.
+    A marker is put on the current page; the new page is loaded once it is gone.
+    """
+    browser.execute_script("window.__halamanLama = true;")
+    aksi()
+    akhir = time.time() + batas
+    while time.time() < akhir:
+        try:
+            if browser.execute_script(
+                    "return window.__halamanLama === undefined && document.readyState === 'complete';"):
+                return
+        except Exception:
+            pass  # the page is navigating right now
+        time.sleep(0.1)
+    raise AssertionError(f"Halaman berikutnya tidak termuat dalam {batas:.0f} detik (url: {browser.current_url})")
+
+
+@pytest.fixture(scope="session")
+def klik_dan_tunggu(browser):
+    """klik_dan_tunggu(elemen): click a submit button/link and wait for the resulting page."""
+    return lambda elemen: tunggu_halaman_baru(browser, elemen.click)
+
+
 @pytest.fixture(scope="session")
 def login_as(browser, live_server):
     """Masuk lewat form Login sungguhan sebagai akun tertentu (dilewati jika sudah masuk sebagai akun itu)."""
@@ -83,6 +110,7 @@ def login_as(browser, live_server):
     def _login(identifier: str, password: str = PASSWORD_DEMO):
         if status["akun"] == identifier:
             return
+        status["akun"] = None  # unknown until this login is confirmed
         browser.get(f"{live_server}/Logout")
         browser.get(f"{live_server}/Login")
         kolom_id = browser.find_element(By.ID, "identifier")
@@ -91,9 +119,11 @@ def login_as(browser, live_server):
         kolom_pw = browser.find_element(By.ID, "password")
         kolom_pw.clear()
         kolom_pw.send_keys(password)
-        browser.find_element(By.CSS_SELECTOR, "button[type='submit']").click()
-        time.sleep(0.4)
-        assert "/Login" not in browser.current_url, f"Login gagal untuk {identifier}"
+        tombol = browser.find_element(By.CSS_SELECTOR, "button[type='submit']")
+        tunggu_halaman_baru(browser, tombol.click)
+        if "/Login" in browser.current_url:
+            teks = browser.find_element(By.TAG_NAME, "body").text.replace("\n", " | ")[:300]
+            raise AssertionError(f"Login gagal untuk {identifier} (url {browser.current_url}): {teks}")
         status["akun"] = identifier
 
     _login.reset = lambda: status.update(akun=None)

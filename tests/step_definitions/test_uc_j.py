@@ -45,15 +45,15 @@ def pilih_bintang(ctx, bintang, ulasan):
 
 
 @when(parsers.parse('the citizen clicks the "{tombol}" button'))
-def klik(ctx, tombol):
+def klik(ctx, klik_dan_tunggu, tombol):
     el = ctx["browser"].find_element(By.ID, TOMBOL[tombol])
     assert el.text.strip() == tombol
-    el.click()
+    klik_dan_tunggu(el)
 
 
 @when(parsers.parse('the citizen leaves the star rating option blank and clicks the "{tombol}" button'))
-def kirim_tanpa_bintang(ctx, tombol):
-    klik(ctx, tombol)
+def kirim_tanpa_bintang(ctx, klik_dan_tunggu, tombol):
+    klik(ctx, klik_dan_tunggu, tombol)
 
 
 @then("the system saves the evaluation to the Rating table")

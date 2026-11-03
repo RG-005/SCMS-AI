@@ -60,10 +60,10 @@ def isi_nip_saja(ctx, nip):
 
 
 @when(parsers.parse('the admin clicks the "{tombol}" button'))
-def klik(ctx, tombol):
+def klik(ctx, klik_dan_tunggu, tombol):
     el = ctx["browser"].find_element(By.ID, TOMBOL[tombol])
     assert el.text.strip() == tombol
-    el.click()
+    klik_dan_tunggu(el)
 
 
 @then("the system saves the new Road Inspector data to the database")
