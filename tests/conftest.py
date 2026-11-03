@@ -49,6 +49,24 @@ def live_server():
     yield BASE_URL
 
 
+def _tanpa_pengelola_sandi(opts):
+    """Turn off Chrome/Edge's password manager for the test browser.
+
+    After logging in with a demo password such as "password123", Chrome can show its own
+    "Change your password" (leak detection) or "Save password?" dialog over the tab. While it
+    is open, WebDriver clicks and keystrokes never reach the page (JavaScript still runs), so a
+    submit click does nothing and typed text stays empty. This only happens on machines that can
+    reach Google's leak-check service, which is why the same tests pass offline.
+    """
+    opts.add_experimental_option("prefs", {
+        "credentials_enable_service": False,
+        "profile.password_manager_enabled": False,
+        "profile.password_manager_leak_detection": False,
+    })
+    opts.add_argument("--disable-features=PasswordLeakDetection,PasswordManagerOnboarding")
+    return opts
+
+
 @pytest.fixture(scope="session")
 def browser(live_server):
     """Membuka 1 jendela browser Selenium untuk mengeksekusi seluruh skenario BDD secara berurutan."""
@@ -62,12 +80,14 @@ def browser(live_server):
         chrome_opts.add_argument("--window-size=1280,820")
         chrome_opts.add_argument("--disable-gpu")
         chrome_opts.add_argument("--no-sandbox")
+        _tanpa_pengelola_sandi(chrome_opts)
         driver = webdriver.Chrome(options=chrome_opts)
     except Exception:
         edge_opts = EdgeOptions()
         if headless_mode:
             edge_opts.add_argument("--headless=new")
         edge_opts.add_argument("--window-size=1280,820")
+        _tanpa_pengelola_sandi(edge_opts)
         driver = webdriver.Edge(options=edge_opts)
 
     driver.implicitly_wait(5)
