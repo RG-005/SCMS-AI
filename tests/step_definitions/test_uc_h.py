@@ -9,8 +9,9 @@ scenarios("../features/uc_h_dashboard.feature")
 
 
 @pytest.fixture
-def dash_context(browser, live_server):
+def dash_context(browser, live_server, login_as):
     seed_data()
+    login_as("admin@dpupr.surabaya.go.id")
     db = SessionLocal()
     yield {
         "db": db,

@@ -5,7 +5,7 @@
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688?logo=fastapi&logoColor=white)
 ![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-ORM-red?logo=sqlite&logoColor=white)
-![Pytest-BDD](https://img.shields.io/badge/Pytest--BDD-17%20Passed-success?logo=pytest&logoColor=white)
+![Pytest](https://img.shields.io/badge/Pytest-17%20BDD%20%2B%203%20E2E%20%2B%2064%20unit-success?logo=pytest&logoColor=white)
 ![Leaflet GIS](https://img.shields.io/badge/Leaflet.js-OpenStreetMap-199900?logo=openstreetmap&logoColor=white)
 
 ---
@@ -23,11 +23,11 @@
 **SCMS-AI** dirancang untuk mentransformasi proses penanganan pengaduan kerusakan jalan dan infrastruktur di Kota Surabaya dari yang semula bersifat manual-reaktif menjadi terotomatisasi dan berbasis tingkat risiko (*Risk-Based Triage*).
 
 Sistem ini mengintegrasikan tiga pilar kecerdasan utama:
-1. **Computer Vision (YOLOv8-Infra):** Memvalidasi bukti foto warga secara otomatis (menolak foto non-infrastruktur) serta mengekstraksi rekomendasi kategori kerusakan dan *Severity Score* awal.
-2. **Natural Language Processing (Sentence-Transformers):** Mendeteksi duplikasi laporan secara spasial-semantik di lokasi yang sama, menggabungkan laporan serupa ke tiket *Work Order* aktif, dan menaikkan nilai *Exposure Count* (+1).
-3. **Multi-Factor Risk Scoring Engine & GIS:** Menghitung skor prioritas penanganan secara objektif menggunakan formula:
-   $$\text{Risk Score} = \text{Severity} \times \text{Exposure} \times \text{Vulnerability} \times \text{Criticality}$$
-   Hasil perhitungan divisualisasikan pada peta geospasial interaktif (Leaflet.js & OpenStreetMap) beserta rekomendasi SLA penanganan.
+1. **Computer Vision (YOLOv8, opsional):** Memvalidasi bukti foto warga (menolak foto non-infrastruktur) serta mengekstraksi rekomendasi kategori kerusakan dan *Severity Score* awal. Secara bawaan berjalan dalam **mode simulasi** (lihat [Mode AI](#-mode-ai)).
+2. **Natural Language Processing (Sentence-Transformers, opsional):** Mendeteksi duplikasi laporan secara spasial-semantik (radius 50 m + kemiripan deskripsi), menggabungkan laporan serupa ke tiket *Work Order* aktif, dan menaikkan nilai *Exposure Count* (+1). Bawaan: kemiripan leksikal tanpa model.
+3. **Multi-Factor Risk Scoring Engine & GIS (PRD BR-2):** Menghitung skor prioritas penanganan (skala 0–10) di `app/services/risk_scoring.py`:
+   $$\text{Risk Score} = \text{clip}\big(0.50\,S + 0.45\ln(E+1) + 0.15\,V + 0.25\,C,\ 0,\ 10\big)$$
+   dengan *S* = severity, *E* = jumlah pelapor, *V* = kerentanan lokasi, *C* = kritikalitas kelas jalan. Hasilnya menentukan prioritas & SLA (≥ 8 Urgent/24 jam, 6–8 Tinggi/3×24 jam, 4–6 Borderline, < 4 Rendah/7×24 jam) dan divisualisasikan pada peta Leaflet.js & OpenStreetMap.
 
 ---
 
@@ -67,6 +67,11 @@ scms-ai-pupr/
 │   │   └── kontrol_dashboard.py     # Controller UC-H (Dashboard Prioritas & GIS)
 │   ├── models/
 │   │   └── entities.py              # Definisi 10 Tabel Physical Data Model (SQLAlchemy)
+│   ├── services/
+│   │   ├── ai_service.py            # Validasi foto, Computer Vision & NLP (simulasi / YOLOv8 / ST)
+│   │   ├── deduplikasi.py           # Aturan deduplikasi spasial-semantik (BR-3)
+│   │   └── risk_scoring.py          # Formula Risk Score, prioritas & SLA (BR-2)
+│   ├── auth.py                      # Sesi login & pembatasan akses per peran
 │   ├── static/
 │   │   └── images/                  # Aset visual dan logo instansi
 │   ├── views/templates/             # Antarmuka pengguna (Jinja2, TailwindCSS, Leaflet.js)
@@ -84,9 +89,11 @@ scms-ai-pupr/
 │   └── sequence_diagrams/           # File PlantUML (.puml) Sequence Diagram 5 Use Case
 ├── tests/
 │   ├── features/                    # Spesifikasi skenario Gherkin (.feature)
-│   └── step_definitions/            # Pengujian otomatis Pytest-BDD (17 Skenario)
+│   ├── step_definitions/            # Pengujian otomatis Pytest-BDD (17 Skenario) + 3 E2E Selenium
+│   └── test_keamanan_dan_logika.py  # Uji cepat tanpa browser: hak akses, unggah foto, deduplikasi, risk score
 ├── pytest.ini                       # Konfigurasi pytest runner
 ├── requirements.txt                 # Daftar dependensi paket Python
+├── requirements-ai.txt              # (Opsional) model AI sungguhan: ultralytics, sentence-transformers
 └── README.md                        # Dokumentasi utama proyek
 ```
 
@@ -116,28 +123,62 @@ python -m venv venv
 pip install -r requirements.txt
 ```
 
-### 4. Inisialisasi & Isi Data Awal (Database Seeder)
-Menjalankan seeder untuk mengisi 10 tabel basis data dengan data awal skenario pengujian:
+### 4. Salin `.env.example` menjadi `.env` lalu sesuaikan
+Isi `DATABASE_URL` (tanpa `.env`, aplikasi memakai SQLite `scms_dev.db`) dan `SCMS_SECRET_KEY` (penanda tangan cookie sesi login).
+
+### 5. Inisialisasi & Isi Data Awal (Database Seeder)
+> Database lama dari Sprint 1 tetap bisa dipakai: saat aplikasi dijalankan, kolom baru (koordinat laporan, alamat domisili) ditambahkan otomatis. Jalankan seeder hanya untuk mengisi ulang data contoh.
+> ⚠️ Seeder **menghapus seluruh tabel** lalu mengisinya ulang. Untuk database selain SQLite (mis. PostgreSQL) seeder menolak berjalan kecuali diberi `--force`.
 ```bash
-python -m database.seed
+python -m database.seed            # SQLite lokal
+python -m database.seed --force    # PostgreSQL: hanya jika memang ingin mereset
 ```
 
-### 5. Jalankan Pengujian Otomatis BDD (17 Skenario)
-Memastikan seluruh skenario penerimaan fungsional berjalan lulus (`17 passed`):
+### 6. Jalankan Pengujian Otomatis
+Pengujian **selalu** memakai database terpisah `scms_test.db`, sehingga database di `.env` tidak tersentuh.
 ```bash
-pytest -v
+pytest -v                                      # semua: 17 BDD + 3 E2E Selenium + 64 uji cepat (butuh Chrome/Edge)
+pytest tests/test_keamanan_dan_logika.py -v    # uji cepat saja, tanpa browser
+HEADLESS=1 pytest -v                           # browser tanpa jendela
 ```
 
-### 6. Jalankan Server Aplikasi Web
+### 7. Jalankan Server Aplikasi Web
 ```bash
 uvicorn app.main:app --reload
 ```
 Setelah server aktif, buka browser dan akses tautan berikut:
 * **Halaman Login Utama (`UC-K`):** `http://127.0.0.1:8000/Login`
-* **Form Pelaporan Warga 4 Langkah (`UC-A`):** `http://127.0.0.1:8000/lapor`
-* **Dashboard Prioritas & Peta GIS (`UC-H`):** `http://127.0.0.1:8000/Dashboard`
-* **Verifikasi Laporan & Evaluasi AI (`UC-B`):** `http://127.0.0.1:8000/verifikasi`
-* **Penugasan Penilik Jalan & SPK (`UC-G`):** `http://127.0.0.1:8000/work-orders`
+* **Form Pelaporan Warga 4 Langkah (`UC-A`, login Warga):** `http://127.0.0.1:8000/lapor`
+* **Dashboard Prioritas & Peta GIS (`UC-H`, login staf):** `http://127.0.0.1:8000/Dashboard`
+* **Verifikasi Laporan & Evaluasi AI (`UC-B`, login Admin/Kabid):** `http://127.0.0.1:8000/verifikasi`
+* **Penugasan Penilik Jalan & SPK (`UC-G`, login staf):** `http://127.0.0.1:8000/work-orders`
+
+---
+
+## 🤖 Mode AI
+
+Semua fitur AI melewati satu layanan (`app/services/ai_service.py`) dan backend-nya dipilih lewat `.env`:
+
+| Variabel | Bawaan | Pilihan lain |
+| :--- | :--- | :--- |
+| `SCMS_CV_BACKEND` | `simulasi` — **tidak ada model**; kategori & severity ditentukan dari **nama berkas** (nama berisi `kucing`, `selfie`, `mobil`, dst. ditolak; `retak` → Retak Permukaan; `amblas` → Jalan Amblas) | `yolov8` + `SCMS_YOLO_WEIGHTS=<path .pt>` (model kerusakan jalan, mis. dilatih pada RDD2022: D00/D10/D20 → Retak, D40 → Berlubang) |
+| `SCMS_NLP_BACKEND` | `leksikal` — kemiripan kata (tanpa model) | `sentence-transformers` (model `SCMS_ST_MODEL`, bawaan `paraphrase-multilingual-MiniLM-L12-v2`) |
+
+* Foto **benar-benar diunggah** dan diperiksa isinya (harus JPEG/PNG asli, ≤ 10 MB), lalu disimpan di `app/static/uploads/`.
+* Dalam mode simulasi, UI menampilkan label **"Mode simulasi AI"** dan tidak menampilkan angka confidence.
+* Model sungguhan: `pip install -r requirements-ai.txt`. Jika library/bobot model tidak ditemukan, aplikasi mencatat peringatan dan kembali ke mode simulasi.
+
+## 🛡️ Hak Akses per Peran
+
+| Halaman / Aksi | Warga | Admin (PPK) | Kepala Bidang | Penilik Jalan |
+| :--- | :---: | :---: | :---: | :---: |
+| `/Beranda`, `/lapor` | ✅ | – | – | – |
+| `/Dashboard` | – | ✅ | ✅ | ✅ |
+| `/verifikasi` | – | ✅ | 👁️ lihat saja | – |
+| `/work-orders` | – | ✅ | 👁️ lihat saja | 👁️ lihat saja |
+| Setujui / inspeksi / tugaskan | – | ✅ | – | – |
+
+Halaman tanpa login dialihkan ke `/Login`; peran yang tidak berhak mendapat `403`. Sesi berakhir otomatis jika akun dinonaktifkan. *Exposure* tiket dihitung dari jumlah **warga berbeda** yang melapor, sehingga satu warga yang mengirim ulang laporan tidak menaikkan prioritas.
 
 ---
 
@@ -147,9 +188,9 @@ Seluruh akun pengujian di bawah ini menggunakan kata sandi: **`password123`**
 
 | Peran Aktor | Identifier (No. HP / Email) | Halaman Tujuan Setelah Login |
 | :--- | :--- | :--- |
-| **Warga** | `081234567890` | `/Beranda` (Form Pelaporan Warga) |
+| **Warga** | `0812xxxxxxx` (atau NIK `3578010101900001`) | `/Beranda` (Form Pelaporan Warga) |
 | **Admin (PPK)** | `admin@dpupr.surabaya.go.id` | `/Dashboard` (Dashboard Prioritas & Verifikasi) |
-| **Penilik Jalan** | `budi.santoso@dpupr.surabaya.go.id` | `/TugasLapangan` (Manajemen SPK & Inspeksi) |
+| **Penilik Jalan** | `budi.santoso@dpupr.surabaya.go.id` | `/Dashboard` (halaman `/TugasLapangan` direncanakan Sprint 2) |
 | **Kepala Bidang** | `kabid@dpupr.surabaya.go.id` | `/Dashboard` (Monitoring Eksekutif & Analitik) |
 
 ---

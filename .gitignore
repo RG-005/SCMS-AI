@@ -4,5 +4,11 @@ __pycache__/
 .env
 *.db
 .pytest_cache/
-.env
-*.db
+
+# Foto yang diunggah warga saat aplikasi berjalan
+app/static/uploads/*
+!app/static/uploads/.gitkeep
+
+# Bobot model AI (opsional)
+models/
+*.pt

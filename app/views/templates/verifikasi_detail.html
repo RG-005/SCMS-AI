@@ -33,15 +33,15 @@
                 </a>
                 <div class="flex items-center space-x-2.5 pl-2 border-l border-slate-200">
                     <div class="w-9 h-9 rounded-full bg-[#0F2942] text-white flex items-center justify-center font-bold text-xs relative">
-                        HK
+                        {{ (pengguna.nama or '?')[:2] | upper }}
                         <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white absolute bottom-0 right-0"></span>
                     </div>
                     <div class="hidden lg:block leading-tight">
-                        <p class="text-xs font-bold text-slate-800">Ir. Hendra Kusuma, S.T., M.Eng.</p>
-                        <p class="text-[10px] text-slate-500">PPK Bina Marga & Jembatan</p>
+                        <p class="text-xs font-bold text-slate-800">{{ pengguna.nama }}</p>
+                        <p class="text-[10px] text-slate-500">{{ pengguna.peran }}</p>
                     </div>
                 </div>
-                <a href="/Login" class="ml-2 text-xs font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-3 py-1.5 rounded-lg transition">
+                <a href="/Logout" class="ml-2 text-xs font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-3 py-1.5 rounded-lg transition">
                     Keluar
                 </a>
             </div>
@@ -141,6 +141,7 @@
             </div>
         </div>
 
+        {% if detail %}
         <!-- 2. PANEL DETAIL TIKET TERPILIH (REQ-VER-2: FOTO, SEVERITY SCORE, RISK SCORE, LOKASI) -->
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
@@ -166,12 +167,15 @@
 
                     <!-- Bukti Foto & Bounding Box Severity Score (REQ-VER-2) -->
                     <div class="relative rounded-xl bg-slate-900 h-56 flex flex-col items-center justify-center overflow-hidden border border-slate-300 mb-4">
+                        {% if detail.laporan and detail.laporan.url_foto %}
+                        <img src="/{{ detail.laporan.url_foto }}" alt="Foto laporan" class="absolute inset-0 w-full h-full object-cover opacity-60" onerror="this.remove()">
+                        {% endif %}
                         <div class="border-2 border-red-500 bg-red-500/10 rounded-lg px-6 py-6 text-center relative">
                             <span class="absolute -top-3 left-2 bg-red-600 text-white text-[10px] font-extrabold px-2 py-0.5 rounded">
                                 {{ detail.wo.kategori_kerusakan }} | Severity Score: {{ detail.wo.severity_score_kasus }} / 10
                             </span>
                             <p class="text-xs text-slate-200 font-semibold">Bukti Foto Laporan Warga</p>
-                            <p class="text-[11px] text-slate-400 mt-1">{{ detail.laporan.url_foto if detail.laporan else 'static/uploads/jalan_berlubang_sudirman.jpg' }}</p>
+                            <p class="text-[11px] text-slate-400 mt-1">{{ detail.laporan.url_foto if detail.laporan else 'Tidak ada foto' }}</p>
                         </div>
                         <div class="absolute bottom-2.5 left-3 right-3 bg-slate-950/80 text-slate-300 text-[10px] px-3 py-1 rounded flex justify-between">
                             <span>Lokasi: {{ detail.wo.lokasi_jalan }}</span>
@@ -202,6 +206,9 @@
                 <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
                     <p class="text-[10px] font-extrabold text-[#0B5ED7] uppercase">Evaluasi Parameter Risiko (REQ-VER-2)</p>
                     <h3 class="font-extrabold text-slate-900 text-base mt-0.5 mb-4">Rincian Skor Analisis AI</h3>
+                    {% if ai_simulasi %}
+                    <p class="-mt-2 mb-4 p-2.5 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-[11px] font-semibold">Mode simulasi AI: severity &amp; kategori laporan baru berasal dari nama berkas, bukan analisis isi foto.</p>
+                    {% endif %}
 
                     <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between mb-4">
                         <div>
@@ -243,6 +250,7 @@
                         Tiket <strong>{{ detail.wo.id_work_order }}</strong> memiliki Risk Score <strong>{{ detail.risk_score_label }}</strong> yang berada pada rentang ambigu. Pilih salah satu keputusan di bawah:
                     </p>
 
+                    {% if boleh_aksi %}
                     <!-- Opsi A: Tugaskan Inspeksi Tambahan (REQ-VER-5 / Skenario 3) -->
                     <form action="/verifikasi/{{ detail.wo.id_work_order }}/inspect" method="post" class="mt-4 pt-4 border-t border-slate-100 space-y-3">
                         <div>
@@ -253,7 +261,7 @@
                                 {% for nama in detail.daftar_penilik %}
                                     <option value="{{ nama }}">{{ nama }}</option>
                                 {% else %}
-                                    <option value="Budi Santoso">Budi Santoso</option>
+                                    <option value="" disabled selected>Tidak ada Penilik Jalan di wilayah ini</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -269,6 +277,9 @@
                             Lanjutkan Tanpa Inspeksi
                         </button>
                     </form>
+                    {% else %}
+                    <p class="mt-4 p-3 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-600">Mode lihat saja: hanya Admin (PPK) yang dapat mengambil keputusan verifikasi.</p>
+                    {% endif %}
                 </div>
 
                 {% else %}
@@ -282,17 +293,24 @@
                         Skor risiko tiket <strong>{{ detail.wo.id_work_order }}</strong> berada di atas ambang batas jelas (<strong>{{ detail.risk_score_label }}</strong>). Setujui tiket ini agar langsung masuk ke antrean penugasan Penilik Jalan.
                     </p>
 
+                    {% if boleh_aksi %}
                     <form action="/verifikasi/{{ detail.wo.id_work_order }}/approve" method="post" class="mt-4">
                         <button type="submit" class="w-full bg-[#0B5ED7] hover:bg-blue-700 text-white font-bold text-xs py-3 px-5 rounded-lg shadow-sm flex items-center justify-center space-x-2 transition">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                             <span>Setujui Tiket</span>
                         </button>
                     </form>
+                    {% else %}
+                    <p class="mt-4 p-3 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-600">Mode lihat saja: hanya Admin (PPK) yang dapat mengambil keputusan verifikasi.</p>
+                    {% endif %}
                 </div>
                 {% endif %}
 
             </div>
         </div>
+        {% else %}
+        <div class="bg-white rounded-xl border border-slate-200 p-10 text-center text-sm text-slate-500">Belum ada tiket untuk diverifikasi.</div>
+        {% endif %}
 
     </main>
 

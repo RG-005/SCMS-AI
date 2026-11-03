@@ -33,15 +33,15 @@
                 </a>
                 <div class="flex items-center space-x-2.5 pl-2 border-l border-slate-200">
                     <div class="w-9 h-9 rounded-full bg-[#0F2942] text-white flex items-center justify-center font-bold text-xs relative">
-                        HK
+                        {{ (pengguna.nama or '?')[:2] | upper }}
                         <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white absolute bottom-0 right-0"></span>
                     </div>
                     <div class="hidden lg:block leading-tight">
-                        <p class="text-xs font-bold text-slate-800">Ir. Hendra Kusuma, S.T., M.Eng.</p>
-                        <p class="text-[10px] text-slate-500">PPK Bina Marga & Jembatan</p>
+                        <p class="text-xs font-bold text-slate-800">{{ pengguna.nama }}</p>
+                        <p class="text-[10px] text-slate-500">{{ pengguna.peran }}</p>
                     </div>
                 </div>
-                <a href="/Login" class="ml-2 text-xs font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-3 py-1.5 rounded-lg transition">
+                <a href="/Logout" class="ml-2 text-xs font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-3 py-1.5 rounded-lg transition">
                     Keluar
                 </a>
             </div>
@@ -189,6 +189,7 @@
                 </div>
             </div>
 
+            {% if boleh_aksi %}
             <form action="/work-orders/{{ info_tiket.id_work_order }}/assign" method="post" class="flex flex-col sm:flex-row items-end gap-3">
                 <div class="w-full sm:flex-1">
                     <label class="block text-xs font-bold text-slate-700 mb-1.5">
@@ -223,6 +224,12 @@
                     </a>
                 </div>
             </form>
+            {% else %}
+            <p class="p-3 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-600">
+                Penilik Jalan tersedia di {{ info_tiket.nama_wilayah }}: {{ info_tiket.daftar_penilik | join(', ') or 'tidak ada' }}.
+                Hanya Admin (PPK) yang dapat menerbitkan penugasan.
+            </p>
+            {% endif %}
         </div>
         {% endif %}
 

@@ -3,6 +3,7 @@ fastapi
 uvicorn[standard]
 jinja2
 python-multipart
+itsdangerous
 
 # Database (PostgreSQL & ORM)
 sqlalchemy
@@ -12,6 +13,9 @@ python-dotenv
 # Security (Password Hashing sesuai REQ-LGN-8)
 passlib[bcrypt]
 
+# Validasi isi foto yang diunggah (JPEG/PNG asli)
+pillow
+
 # Automated BDD Testing (Sesuai DoD Sprint 1)
 bcrypt==4.0.1
 pytest
@@ -20,3 +24,5 @@ httpx
 
 selenium>=4.18.0
 webdriver-manager>=4.0.1
+
+# Model AI sungguhan (opsional): lihat requirements-ai.txt

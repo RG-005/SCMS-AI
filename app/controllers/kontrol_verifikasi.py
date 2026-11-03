@@ -1,15 +1,28 @@
+from typing import Optional
+
 from sqlalchemy.orm import Session
-from app.models.entities import WorkOrder, Laporan, PenilikJalan, Wilayah
+
+from app.models.entities import Admin, Laporan, PenilikJalan, Wilayah, WorkOrder
+
 
 class KontrolVerifikasi:
     def __init__(self, db: Session):
         self.db = db
 
+    def _wo(self, id_work_order: str) -> Optional[WorkOrder]:
+        return self.db.query(WorkOrder).filter_by(id_work_order=id_work_order).first()
+
+    def _catat_admin(self, wo: WorkOrder, email_admin: Optional[str]):
+        if email_admin:
+            admin = self.db.query(Admin).filter_by(email_admin=email_admin).first()
+            if admin:
+                wo.id_admin = admin.id_admin
+
     def muat_daftar_tiket(self):
         return self.db.query(WorkOrder).order_by(WorkOrder.risk_score.desc()).all()
 
     def lihat_detail_tiket(self, id_work_order: str):
-        wo = self.db.query(WorkOrder).filter_by(id_work_order=id_work_order).first()
+        wo = self._wo(id_work_order)
         if not wo:
             return None
 
@@ -30,26 +43,32 @@ class KontrolVerifikasi:
             "risk_score_label": f"{wo.risk_score} ({wo.prioritas})"
         }
 
-    def setujui_tiket(self, id_work_order: str):
-        wo = self.db.query(WorkOrder).filter_by(id_work_order=id_work_order).first()
+    def setujui_tiket(self, id_work_order: str, email_admin: Optional[str] = None):
+        wo = self._wo(id_work_order)
         if wo:
             wo.status_work_order = "Disetujui"
+            self._catat_admin(wo, email_admin)
             self.db.commit()
         return wo
 
-    def tugaskan_inspeksi_tambahan(self, id_work_order: str, nama_penilik: str):
-        wo = self.db.query(WorkOrder).filter_by(id_work_order=id_work_order).first()
-        penilik = self.db.query(PenilikJalan).filter_by(nama_penilik=nama_penilik).first()
-        if wo and penilik:
+    def tugaskan_inspeksi_tambahan(self, id_work_order: str, nama_penilik: str, email_admin: Optional[str] = None):
+        wo = self._wo(id_work_order)
+        if not wo:
+            return None
+        # Only an inspector from the ticket's own region can be assigned.
+        penilik = self.db.query(PenilikJalan).filter_by(nama_penilik=nama_penilik, id_wilayah=wo.id_wilayah).first()
+        if penilik:
             wo.id_penilik = penilik.id_penilik
             wo.status_work_order = "Menunggu Inspeksi"
+            self._catat_admin(wo, email_admin)
             self.db.commit()
         return wo
 
     def lanjutkan_tanpa_inspeksi(self, id_work_order: str, email_admin: str = "admin@dpupr.surabaya.go.id"):
-        wo = self.db.query(WorkOrder).filter_by(id_work_order=id_work_order).first()
+        wo = self._wo(id_work_order)
         if wo:
             wo.log_keputusan = f"Log Keputusan Manual - {email_admin}"
             wo.status_work_order = "Disetujui"
+            self._catat_admin(wo, email_admin)
             self.db.commit()
         return wo

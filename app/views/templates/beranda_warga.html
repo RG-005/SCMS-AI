@@ -22,13 +22,13 @@
             </div>
             <div class="flex items-center space-x-3">
                 <div class="flex items-center space-x-2.5 pl-2 border-l border-slate-200">
-                    <div class="w-8 h-8 rounded-full bg-[#0B5ED7] text-white flex items-center justify-center font-bold text-xs">TW</div>
+                    <div class="w-8 h-8 rounded-full bg-[#0B5ED7] text-white flex items-center justify-center font-bold text-xs">{{ (pengguna.nama or '?')[:2] | upper }}</div>
                     <div class="hidden sm:block leading-tight">
-                        <p class="text-xs font-bold text-slate-800">Bpk. Tri Wahyudi</p>
-                        <p class="text-[10px] text-slate-500">Warga Terdaftar &bull; 0812xxxxxxx</p>
+                        <p class="text-xs font-bold text-slate-800">{{ pengguna.nama }}</p>
+                        <p class="text-[10px] text-slate-500">Warga Terdaftar</p>
                     </div>
                 </div>
-                <a href="/Login" class="ml-1 text-xs font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-3 py-1.5 rounded-lg transition">
+                <a href="/Logout" class="ml-1 text-xs font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-3 py-1.5 rounded-lg transition">
                     Keluar
                 </a>
             </div>
@@ -43,7 +43,7 @@
                 <span class="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-white/20 text-white mb-2 inline-block">
                     Portal Pelapor Resmi
                 </span>
-                <h2 class="text-2xl font-extrabold tracking-tight">Selamat Datang, Bpk. Tri Wahyudi</h2>
+                <h2 class="text-2xl font-extrabold tracking-tight">Selamat Datang, {{ pengguna.nama }}</h2>
                 <p class="text-xs text-blue-100 mt-1 leading-relaxed max-w-xl">
                     Laporkan kerusakan jalan di sekitar Anda dengan cepat. Sistem AI kami akan memproses prioritas penanganan langsung ke Dinas PUPR Kota Surabaya.
                 </p>
@@ -58,7 +58,7 @@
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
             <h3 class="text-sm font-extrabold text-slate-900 mb-4 flex items-center justify-between">
                 <span>Riwayat Laporan Kerusakan Anda</span>
-                <span class="text-[11px] font-normal text-slate-500">Live Database Sync</span>
+                <span class="text-[11px] font-normal text-slate-500">10 laporan terakhir</span>
             </h3>
 
             <div class="overflow-x-auto">
@@ -72,18 +72,21 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
+                        {% for lap in laporan_saya %}
+                        {% set wo = lap.work_order %}
                         <tr class="hover:bg-slate-50/50">
-                            <td class="p-3 font-mono font-bold text-[#0B5ED7]">REP-2026-00341</td>
-                            <td class="p-3">Jalan Berlubang - Jl. Sudirman No. 45</td>
-                            <td class="p-3"><span class="px-2 py-0.5 rounded font-bold text-[10px] bg-red-100 text-red-800">8.4 Urgent</span></td>
-                            <td class="p-3"><span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-[#0B5ED7] border border-blue-200">Disetujui</span></td>
+                            <td class="p-3 font-mono font-bold text-[#0B5ED7]">{{ wo.id_work_order if wo else lap.id_laporan }}</td>
+                            <td class="p-3">{{ wo.kategori_kerusakan if wo else '-' }} - {{ lap.lokasi_teks }}</td>
+                            <td class="p-3">
+                                {% if wo %}
+                                <span class="px-2 py-0.5 rounded font-bold text-[10px] {% if wo.risk_score >= 8 %}bg-red-100 text-red-800{% elif wo.risk_score >= 6 %}bg-orange-100 text-orange-800{% else %}bg-amber-100 text-amber-900{% endif %}">{{ wo.risk_score }} {{ wo.prioritas }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="p-3"><span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-[#0B5ED7] border border-blue-200">{{ wo.status_work_order if wo else lap.status }}</span></td>
                         </tr>
-                        <tr class="hover:bg-slate-50/50">
-                            <td class="p-3 font-mono font-bold text-[#0B5ED7]">REP-2026-00298</td>
-                            <td class="p-3">Jalan Berlubang - Jl. Sudirman No. 45</td>
-                            <td class="p-3"><span class="px-2 py-0.5 rounded font-bold text-[10px] bg-red-100 text-red-800">8.0 Urgent</span></td>
-                            <td class="p-3"><span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">Selesai</span></td>
-                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" class="p-6 text-center text-slate-500">Belum ada laporan. Gunakan tombol "Buat Laporan Baru" untuk melapor.</td></tr>
+                        {% endfor %}
                     </tbody>
                 </table>
             </div>

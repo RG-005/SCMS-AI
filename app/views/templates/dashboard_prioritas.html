@@ -37,15 +37,15 @@
                 </a>
                 <div class="flex items-center space-x-2.5 pl-2 border-l border-slate-200">
                     <div class="w-9 h-9 rounded-full bg-[#0F2942] text-white flex items-center justify-center font-bold text-xs relative">
-                        HK
+                        {{ (pengguna.nama or '?')[:2] | upper }}
                         <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white absolute bottom-0 right-0"></span>
                     </div>
                     <div class="hidden lg:block leading-tight">
-                        <p class="text-xs font-bold text-slate-800">Ir. Hendra Kusuma, S.T., M.Eng.</p>
-                        <p class="text-[10px] text-slate-500">PPK Bina Marga & Jembatan</p>
+                        <p class="text-xs font-bold text-slate-800">{{ pengguna.nama }}</p>
+                        <p class="text-[10px] text-slate-500">{{ pengguna.peran }}</p>
                     </div>
                 </div>
-                <a href="/Login" class="ml-2 text-xs font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-3 py-1.5 rounded-lg transition">
+                <a href="/Logout" class="ml-2 text-xs font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-3 py-1.5 rounded-lg transition">
                     Keluar
                 </a>
             </div>
@@ -86,6 +86,10 @@
             </div>
         </div>
 
+        {% if pesan_aksi %}
+        <div class="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-semibold">{{ pesan_aksi }}</div>
+        {% endif %}
+
         <!-- 4 KARTU KPI OPERASIONAL (REQ-DSH-3 & MOCKUP GAMBAR 3) -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
@@ -95,8 +99,8 @@
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                     </div>
                 </div>
-                <p class="text-3xl font-extrabold text-slate-900 mt-2">245 <span class="text-xs font-normal text-slate-500">Total Kota ({{ total_aduan }} Sampel Uji)</span></p>
-                <p class="text-[11px] text-emerald-600 font-semibold mt-2">Terintegrasi AI Risk Engine</p>
+                <p class="text-3xl font-extrabold text-slate-900 mt-2">{{ total_aktif }} <span class="text-xs font-normal text-slate-500">dari {{ total_aduan }} total tiket</span></p>
+                <p class="text-[11px] text-emerald-600 font-semibold mt-2">Risk Score dihitung otomatis (BR-2)</p>
             </div>
 
             <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
@@ -128,8 +132,8 @@
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     </div>
                 </div>
-                <p class="text-3xl font-extrabold text-emerald-600 mt-2">94.2% <span class="text-xs font-semibold text-slate-500">({{ kasus_selesai }} Tuntas)</span></p>
-                <p class="text-[11px] text-emerald-700 font-semibold mt-2">Memenuhi Kuota Standar Pelayanan PU</p>
+                <p class="text-3xl font-extrabold text-emerald-600 mt-2">{{ persentase_selesai }}% <span class="text-xs font-semibold text-slate-500">({{ kasus_selesai }} Tuntas)</span></p>
+                <p class="text-[11px] text-emerald-700 font-semibold mt-2">Tiket berstatus Selesai dari seluruh tiket</p>
             </div>
         </div>
 
@@ -214,44 +218,29 @@
                     <p class="text-[11px] text-slate-500 mb-4">Komparasi beban laporan masuk dan tingkat penyelesaian per wilayah rayon kerja.</p>
 
                     <div class="space-y-4 text-xs">
+                        {% for r in ringkasan_wilayah %}
+                        {% if r.max_score >= 8 %}{% set warna_bar, warna_teks, label = 'bg-red-600', 'text-red-600', 'Zona Risiko Tinggi' %}
+                        {% elif r.max_score >= 6 %}{% set warna_bar, warna_teks, label = 'bg-orange-500', 'text-orange-600', 'Zona Risiko Menengah' %}
+                        {% else %}{% set warna_bar, warna_teks, label = 'bg-emerald-500', 'text-emerald-600', 'Terkendali' %}{% endif %}
                         <div>
                             <div class="flex justify-between font-bold text-slate-800 mb-1">
-                                <span>Wilayah Gubeng (Surabaya Timur)</span>
-                                <span class="text-red-600">Zona Risiko Tinggi</span>
+                                <span>{{ r.nama_wilayah }}</span>
+                                <span class="{{ warna_teks }}">{{ label }}</span>
                             </div>
                             <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                                <div class="bg-red-600 h-full rounded-full" style="width: 85%"></div>
+                                <div class="{{ warna_bar }} h-full rounded-full" style="width: {{ (r.max_score * 10) | round | int }}%"></div>
                             </div>
-                            <p class="text-[11px] text-slate-500 mt-1">Tiket Tertinggi: <strong>REP-2026-00341 (8.4)</strong></p>
+                            <p class="text-[11px] text-slate-500 mt-1">
+                                {{ r.jumlah_tiket }} tiket aktif{% if r.tiket_tertinggi %} &bull; Tertinggi: <strong>{{ r.tiket_tertinggi }} ({{ r.max_score }})</strong>{% endif %}
+                            </p>
                         </div>
-
-                        <div>
-                            <div class="flex justify-between font-bold text-slate-800 mb-1">
-                                <span>Wilayah Benowo (Surabaya Barat)</span>
-                                <span class="text-orange-600">Zona Risiko Menengah</span>
-                            </div>
-                            <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                                <div class="bg-orange-500 h-full rounded-full" style="width: 68%"></div>
-                            </div>
-                            <p class="text-[11px] text-slate-500 mt-1">Tiket Aktif: <strong>REP-2026-00360 (7.5)</strong></p>
-                        </div>
-
-                        <div>
-                            <div class="flex justify-between font-bold text-slate-800 mb-1">
-                                <span>Wonokromo (Surabaya Selatan)</span>
-                                <span class="text-emerald-600">Terkendali</span>
-                            </div>
-                            <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                                <div class="bg-emerald-500 h-full rounded-full" style="width: 35%"></div>
-                            </div>
-                            <p class="text-[11px] text-slate-500 mt-1">Kepatuhan SLA: 95.8%</p>
-                        </div>
+                        {% endfor %}
                     </div>
                 </div>
 
                 <div class="mt-6 p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600">
                     <p class="font-bold text-slate-800 mb-0.5">Rumus Prioritisasi Otomatis (BR-2):</p>
-                    <p>Risk Score = Severity &times; Exposure &times; Vulnerability &times; Criticality</p>
+                    <p>Risk Score = 0.50&middot;Severity + 0.45&middot;ln(Exposure+1) + 0.15&middot;Vulnerability + 0.25&middot;Criticality (skala 0&ndash;10)</p>
                 </div>
             </div>
         </div>
@@ -328,15 +317,21 @@
                                 </span>
                             </td>
                             <td class="py-3.5 px-4 text-right space-x-1.5 whitespace-nowrap">
-                                <button class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-[11px] px-2.5 py-1.5 rounded-lg">
+                                {% if pengguna.peran in ['Admin', 'Kepala Bidang'] %}
+                                <a href="/verifikasi?ticket_id={{ item.wo.id_work_order }}" class="inline-block bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-[11px] px-2.5 py-1.5 rounded-lg">
                                     Lihat Detail
-                                </button>
-                                <button class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] px-2.5 py-1.5 rounded-lg">
-                                    Setujui
-                                </button>
-                                <button class="bg-[#0B5ED7] hover:bg-blue-700 text-white font-semibold text-[11px] px-2.5 py-1.5 rounded-lg">
-                                    Tugaskan
-                                </button>
+                                </a>
+                                {% endif %}
+                                {% if boleh_aksi and item.wo.status_work_order == 'Dilaporkan' %}
+                                <form action="/Dashboard/{{ item.wo.id_work_order }}/quick-approve" method="post" class="inline">
+                                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] px-2.5 py-1.5 rounded-lg">
+                                        Setujui
+                                    </button>
+                                </form>
+                                {% endif %}
+                                <a href="/work-orders?select_ticket={{ item.wo.id_work_order }}" class="inline-block bg-[#0B5ED7] hover:bg-blue-700 text-white font-semibold text-[11px] px-2.5 py-1.5 rounded-lg">
+                                    {{ 'Tugaskan' if boleh_aksi else 'Lihat SPK' }}
+                                </a>
                             </td>
                         </tr>
                         {% endfor %}
@@ -364,20 +359,13 @@
             attribution: '&copy; OpenStreetMap contributors — GIS SCMS PUPR Surabaya'
         }).addTo(map);
 
-        var daftarTiket = [
-            {% for item in daftar_tiket %}
-            {
-                id: "{{ item.wo.id_work_order }}",
-                label: "{{ item.label_skor }}",
-                kategori: "{{ item.wo.kategori_kerusakan }}",
-                lokasi: "{{ item.wo.lokasi_jalan }}",
-                prioritas: "{{ item.wo.prioritas }}",
-                lat: {{ item.lat }},
-                lng: {{ item.lng }},
-                warna: "{{ item.warna_marker }}"
-            },
-            {% endfor %}
-        ];
+        var daftarTiket = {{ peta_tiket | tojson }};
+
+        function escHtml(v) {
+            return String(v == null ? "" : v).replace(/[&<>"']/g, function(c) {
+                return {"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c];
+            });
+        }
 
         daftarTiket.forEach(function(t) {
             // 1. Lingkaran radius dampak lokal di badan jalan (40 meter, bukan 650 meter!)
@@ -398,10 +386,10 @@
                 fillOpacity: 1.0
             }).addTo(map).bindPopup(
                 "<div style='font-family: Inter, sans-serif; font-size: 12px;'>" +
-                "<strong style='color: #0F172A;'>" + t.label + "</strong><br>" +
-                "<span style='color: #0B5ED7; font-weight: 600;'>" + t.kategori + "</span><br>" +
-                "<span style='color: #475569;'>" + t.lokasi + "</span><br>" +
-                "<span style='font-size: 10px; font-weight: 700; color: " + t.warna + ";'>Prioritas: " + t.prioritas + "</span>" +
+                "<strong style='color: #0F172A;'>" + escHtml(t.label) + "</strong><br>" +
+                "<span style='color: #0B5ED7; font-weight: 600;'>" + escHtml(t.kategori) + "</span><br>" +
+                "<span style='color: #475569;'>" + escHtml(t.lokasi) + "</span><br>" +
+                "<span style='font-size: 10px; font-weight: 700; color: " + escHtml(t.warna) + ";'>Prioritas: " + escHtml(t.prioritas) + "</span>" +
                 "</div>"
             );
         });

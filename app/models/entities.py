@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from sqlalchemy import Column, String, Integer, Float, Boolean, Text, Date, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -11,6 +11,7 @@ class Warga(Base):
     email = Column(String(50), unique=True, index=True)
     no_hp = Column(String(15), unique=True, index=True)
     password_hash = Column(String(255), nullable=False)
+    alamat_domisili = Column(String(255), nullable=True)
     is_active = Column(Boolean, default=True)
 
     laporan_list = relationship("Laporan", back_populates="warga")
@@ -58,6 +59,8 @@ class WorkOrder(Base):
     
     kategori_kerusakan = Column(String(50), nullable=False)
     lokasi_jalan = Column(String(100), nullable=True)
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
     severity_score_kasus = Column(Float, default=0.0)
     exposure_count = Column(Integer, default=1)
     vulnerability_score = Column(Float, default=1.0)
@@ -84,9 +87,11 @@ class Laporan(Base):
     deskripsi = Column(Text, nullable=False)
     url_foto = Column(String(255), nullable=False)
     lokasi_teks = Column(String(100), nullable=True)
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
     severity_score = Column(Float, default=0.0)
     status = Column(String(30), default="Dilaporkan")
-    tanggal_lapor = Column(DateTime, default=datetime.utcnow)
+    tanggal_lapor = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     work_order = relationship("WorkOrder", back_populates="laporan_list")
     warga = relationship("Warga", back_populates="laporan_list")

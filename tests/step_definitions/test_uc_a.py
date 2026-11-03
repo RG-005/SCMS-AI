@@ -1,3 +1,4 @@
+import re
 import time
 import pytest
 from pytest_bdd import scenarios, given, when, then, parsers
@@ -11,20 +12,21 @@ scenarios("../features/uc_a_buat_laporan.feature")
 
 
 @pytest.fixture
-def report_context(browser, live_server):
+def report_context(browser, live_server, login_as):
     seed_data()
     db = SessionLocal()
     yield {
         "db": db,
         "controller": KontrolPelaporan(db),
         "browser": browser,
+        "login_as": login_as,
         "base_url": live_server,
+        "existing_ids": {w.id_work_order for w in db.query(WorkOrder).all()},
         "filename": None,
         "file_size_mb": 2.0,
         "lokasi": "Jl. Sudirman No. 45, Surabaya",
         "deskripsi": "Lubang besar di tengah jalan membahayakan pengendara motor",
         "kategori": None,
-        "mode_deduplikasi": False,
         "initial_exposure": 0,
         "cv_result": None,
         "result": None
@@ -33,6 +35,7 @@ def report_context(browser, live_server):
 
 
 def _open_lapor_page(report_context):
+    report_context["login_as"]("0812xxxxxxx")
     driver = report_context["browser"]
     driver.get(f"{report_context['base_url']}/lapor")
     time.sleep(0.35)
@@ -54,10 +57,11 @@ def on_create_report_page(report_context):
 def active_report_exists(report_context, ticket_id, lokasi, kategori):
     wo = report_context["db"].query(WorkOrder).filter_by(id_work_order=ticket_id).first()
     assert wo is not None
+    assert wo.status_work_order != "Selesai", "duplicate detection only merges into active tickets (BR-3)"
+    assert wo.kategori_kerusakan == kategori
     report_context["initial_exposure"] = wo.exposure_count
     report_context["lokasi"] = lokasi
     report_context["kategori"] = kategori
-    report_context["mode_deduplikasi"] = True
     _open_lapor_page(report_context)
 
 
@@ -113,7 +117,6 @@ def press_submit_report(report_context):
         lokasi_jalan=report_context["lokasi"],
         deskripsi=report_context["deskripsi"],
         kategori_pilihan=report_context["kategori"],
-        mode_deduplikasi=report_context["mode_deduplikasi"]
     )
 
 
@@ -147,16 +150,18 @@ def submit_duplicate_report(report_context):
         lokasi_jalan=report_context["lokasi"],
         deskripsi="Ada jalan berlubang cukup dalam di depan gedung Sudirman",
         kategori_pilihan=report_context["kategori"],
-        mode_deduplikasi=True
     )
     time.sleep(0.25)
 
 
-@then(parsers.parse('I receive the ticket number "{ticket_id}" with initial status "{status}"'))
-def check_ticket_created(report_context, ticket_id, status):
-    assert report_context["result"]["success"] is True
-    assert report_context["result"]["ticket_id"] == ticket_id
-    assert report_context["result"]["status_work_order"] == status
+@then(parsers.parse('I receive a new ticket number with initial status "{status}"'))
+def check_ticket_created(report_context, status):
+    hasil = report_context["result"]
+    assert hasil["success"] is True
+    assert hasil["is_duplicate"] is False
+    assert re.fullmatch(r"REP-\d{4}-\d{5}", hasil["ticket_id"])
+    assert hasil["ticket_id"] not in report_context["existing_ids"]
+    assert hasil["status_work_order"] == status
 
 
 @then(parsers.parse('I see the error message "{expected_msg}"'))

@@ -67,6 +67,7 @@
 
                 <!-- FORM LOGIN (REQ-LGN-1) -->
                 <form action="/Login" method="post" class="space-y-4">
+                    <input type="hidden" name="next" value="{{ next_url or '' }}">
                     <div>
                         <label for="identifier" class="block text-xs font-bold text-slate-800 mb-1.5">
                             Email, Nomor HP, atau NIK Warga

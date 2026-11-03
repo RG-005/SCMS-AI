@@ -5,12 +5,12 @@ Feature: Reporting Road Damage
 
   Scenario: Valid Report Successfully Submitted
     Given I am logged in and on the "Buat Laporan" page
-    When I upload a road damage photo "jalan_berlubang_sudirman.jpg" (size 2.4MB)
-    And I select the location "Jl. Sudirman No. 45, Surabaya" via GPS
+    When I upload a road damage photo "jalan_berlubang_dharmawangsa.jpg" (size 2.4MB)
+    And I select the location "Jl. Dharmawangsa No. 20, Surabaya" via GPS
     And I see the AI category recommendation "Jalan Berlubang" and keep it as is
     And I enter the description "Lubang besar di tengah jalan membahayakan pengendara motor"
     And I press the "Kirim Laporan" button
-    Then I receive the ticket number "REP-2026-00341" with initial status "Dilaporkan"
+    Then I receive a new ticket number with initial status "Dilaporkan"
 
   Scenario: Photo Fails Format or Size Validation
     Given I am on the "Buat Laporan" page

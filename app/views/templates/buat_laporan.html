@@ -32,13 +32,13 @@
                     <span>&larr; Beranda Warga</span>
                 </a>
                 <div class="flex items-center space-x-2.5 pl-2 border-l border-slate-200">
-                    <div class="w-8 h-8 rounded-full bg-[#0B5ED7] text-white flex items-center justify-center font-bold text-xs">TW</div>
+                    <div class="w-8 h-8 rounded-full bg-[#0B5ED7] text-white flex items-center justify-center font-bold text-xs">{{ (pengguna.nama or '?')[:2] | upper }}</div>
                     <div class="hidden sm:block leading-tight">
-                        <p class="text-xs font-bold text-slate-800">Bpk. Tri Wahyudi</p>
-                        <p class="text-[10px] text-slate-500">Warga Terdaftar &bull; 0812xxxxxxx</p>
+                        <p class="text-xs font-bold text-slate-800">{{ pengguna.nama }}</p>
+                        <p class="text-[10px] text-slate-500">Warga Terdaftar</p>
                     </div>
                 </div>
-                <a href="/Login" class="ml-1 text-xs font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-3 py-1.5 rounded-lg transition">
+                <a href="/Logout" class="ml-1 text-xs font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-3 py-1.5 rounded-lg transition">
                     Keluar
                 </a>
             </div>
@@ -90,7 +90,14 @@
                                     <span class="text-[10px] text-slate-500 block">Jumlah Laporan (Exposure)</span>
                                     <strong class="text-slate-900">{{ hasil.exposure_count }} Laporan</strong>
                                 </div>
+                                <div>
+                                    <span class="text-[10px] text-slate-500 block">Risk Score Tiket</span>
+                                    <strong class="text-slate-900">{{ hasil.risk_score }} ({{ hasil.prioritas }})</strong>
+                                </div>
                             </div>
+                            {% if hasil.mode_ai == 'simulasi' %}
+                            <p class="mt-2 text-[11px] text-amber-800">Kategori &amp; severity berasal dari mode simulasi AI (bukan analisis isi foto).</p>
+                            {% endif %}
                         </div>
                     </div>
                     <a href="/lapor" class="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-3.5 py-2 rounded-lg shrink-0 transition">
@@ -157,13 +164,11 @@
         </div>
 
         <!-- FORM UTAMA PELAPORAN 4 LANGKAH -->
-        <form id="formLaporan" action="/lapor" method="post" class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <form id="formLaporan" action="/lapor" method="post" enctype="multipart/form-data" class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
 
             <!-- Hidden Inputs untuk dikirim ke Backend -->
-            <input type="hidden" id="filename" name="filename" value="{{ form_data.filename }}">
-            <input type="hidden" id="file_size_mb" name="file_size_mb" value="{{ form_data.file_size_mb }}">
-            <input type="hidden" id="latitude" name="latitude" value="{{ form_data.latitude }}">
-            <input type="hidden" id="longitude" name="longitude" value="{{ form_data.longitude }}">
+            <input type="hidden" id="latitude" name="latitude" value="{{ form_data.latitude if form_data.latitude is not none else '' }}">
+            <input type="hidden" id="longitude" name="longitude" value="{{ form_data.longitude if form_data.longitude is not none else '' }}">
 
             <!-- ==================== STEP 1: CAPTURE (REQ-RPT-1, REQ-RPT-2, REQ-RPT-3) ==================== -->
             <div id="panel-step-1" class="p-6 sm:p-8">
@@ -171,6 +176,12 @@
                     <span class="text-[10px] font-extrabold text-[#0B5ED7] uppercase tracking-wider">Langkah 1 dari 4 • Capture</span>
                     <h3 class="text-lg font-extrabold text-slate-900 mt-0.5">Unggah Foto Kerusakan Jalan</h3>
                     <p class="text-xs text-slate-500 mt-1">Format berkas wajib <strong>JPG atau PNG</strong> dengan ukuran maksimal <strong>10 MB</strong>. Sistem akan memverifikasi keberadaan objek jalan rusak secara otomatis.</p>
+                    {% if ai_simulasi %}
+                    <p class="mt-3 p-3 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-[11px] font-semibold">
+                        Mode simulasi AI: model Computer Vision belum dipasang. Deteksi saat ini hanya membaca <u>nama berkas</u>
+                        (mis. nama berisi "kucing" ditolak, "retak"/"amblas" menentukan kategori), bukan isi foto.
+                    </p>
+                    {% endif %}
                 </div>
 
                 <!-- Area Pilih File Foto Asli -->
@@ -182,7 +193,7 @@
                             </div>
                             <p class="text-xs font-extrabold text-slate-800">Klik untuk Memilih Foto dari Perangkat Anda</p>
                             <p class="text-[11px] text-slate-500 mt-1">Mendukung JPG, JPEG, PNG (Maksimal 10 MB)</p>
-                            <input type="file" id="fileInputAsli" accept=".jpg,.jpeg,.png,.pdf" class="hidden" onchange="prosesFileDipilih(this)">
+                            <input type="file" id="fileInputAsli" name="foto" accept=".jpg,.jpeg,.png,image/jpeg,image/png" class="hidden" onchange="prosesFileDipilih(this)">
                         </label>
 
                         <!-- Pesan Validasi Real-Time Step 1 -->
@@ -190,15 +201,15 @@
 
                         <!-- Opsi Cepat Pengujian Skenario BDD (Tanpa Harus Cari File di Laptop) -->
                         <div class="mt-5 pt-4 border-t border-slate-100">
-                            <p class="text-[11px] font-bold text-slate-500 mb-2">Atau gunakan sampel berkas pengujian BDD berikut:</p>
+                            <p class="text-[11px] font-bold text-slate-500 mb-2">Atau buat berkas uji coba (gambar contoh dibuat di browser):</p>
                             <div class="flex flex-wrap gap-2">
-                                <button type="button" onclick="simulasiFile('jalan_berlubang_sudirman.jpg', 2.4)" class="text-[11px] bg-slate-100 hover:bg-blue-50 hover:text-[#0B5ED7] text-slate-700 font-semibold px-3 py-1.5 rounded-lg border border-slate-200 transition">
-                                    Sampel Valid: jalan_berlubang_sudirman.jpg (2.4 MB)
+                                <button type="button" onclick="demoBerkas('jalan_berlubang_contoh.jpg', 'gambar')" class="text-[11px] bg-slate-100 hover:bg-blue-50 hover:text-[#0B5ED7] text-slate-700 font-semibold px-3 py-1.5 rounded-lg border border-slate-200 transition">
+                                    Sampel Valid: jalan_berlubang_contoh.jpg
                                 </button>
-                                <button type="button" onclick="simulasiFile('foto_resolusi_tinggi.jpg', 15.0)" class="text-[11px] bg-slate-100 hover:bg-amber-50 hover:text-amber-800 text-slate-700 font-semibold px-3 py-1.5 rounded-lg border border-slate-200 transition">
+                                <button type="button" onclick="demoBerkas('foto_resolusi_tinggi.jpg', 'besar')" class="text-[11px] bg-slate-100 hover:bg-amber-50 hover:text-amber-800 text-slate-700 font-semibold px-3 py-1.5 rounded-lg border border-slate-200 transition">
                                     Uji Ukuran &gt;10MB (15 MB)
                                 </button>
-                                <button type="button" onclick="simulasiFile('kucing.jpg', 1.8)" class="text-[11px] bg-slate-100 hover:bg-red-50 hover:text-red-700 text-slate-700 font-semibold px-3 py-1.5 rounded-lg border border-slate-200 transition">
+                                <button type="button" onclick="demoBerkas('kucing.jpg', 'gambar')" class="text-[11px] bg-slate-100 hover:bg-red-50 hover:text-red-700 text-slate-700 font-semibold px-3 py-1.5 rounded-lg border border-slate-200 transition">
                                     Uji Non-Jalan: kucing.jpg
                                 </button>
                             </div>
@@ -207,7 +218,7 @@
 
                     <!-- Panel Preview Foto & Hasil Deteksi Computer Vision -->
                     <div class="md:col-span-5 bg-slate-50 rounded-xl border border-slate-200 p-4">
-                        <p class="text-xs font-bold text-slate-700 mb-2">Pratinjau & Status Deteksi AI (YOLOv8):</p>
+                        <p class="text-xs font-bold text-slate-700 mb-2">Pratinjau & Status Deteksi AI (mode: {{ mode_ai }}):</p>
                         <div id="previewContainer" class="h-44 rounded-lg bg-slate-200/70 border border-slate-300 flex flex-col items-center justify-center overflow-hidden relative">
                             <img id="imgPreview" src="" alt="Preview" class="hidden w-full h-full object-cover">
                             <p id="placeholderPreview" class="text-[11px] text-slate-500 px-4 text-center">Belum ada foto yang dipilih.</p>
@@ -283,7 +294,7 @@
                     </div>
                     <div class="md:col-span-3">
                         <label class="block text-xs font-bold text-slate-700 mb-1">Titik Koordinat (Lat, Lng)</label>
-                        <input type="text" id="tampilanKoordinat" value="-7.26550, 112.74700" readonly
+                        <input type="text" id="tampilanKoordinat" value="{% if form_data.latitude is not none %}{{ '%.5f' % form_data.latitude }}, {{ '%.5f' % form_data.longitude }}{% else %}Belum dipilih (geser pin / klik peta){% endif %}" readonly
                                class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs font-mono font-semibold text-slate-600 bg-slate-100">
                     </div>
                     <div class="md:col-span-3">
@@ -319,11 +330,11 @@
                 <div class="p-4 rounded-xl bg-blue-50/70 border border-blue-200 mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                         <span class="inline-block bg-[#0B5ED7] text-white text-[10px] font-extrabold px-2 py-0.5 rounded uppercase mb-1">
-                            Rekomendasi AI Computer Vision (REQ-RPT-5)
+                            Rekomendasi AI Computer Vision (REQ-RPT-5){% if ai_simulasi %} &bull; Simulasi{% endif %}
                         </span>
                         <p class="text-xs font-bold text-slate-900">
-                            Kategori Terdeteksi: <span id="teksRekomendasiAI" class="text-[#0B5ED7] underline">Jalan Berlubang</span>
-                            • Estimasi Severity Awal: <span id="teksSeverityAI" class="text-red-600">8.5 / 10</span>
+                            Kategori Terdeteksi: <span id="teksRekomendasiAI" class="text-[#0B5ED7] underline">-</span>
+                            • Estimasi Severity Awal: <span id="teksSeverityAI" class="text-red-600">-</span>
                         </p>
                         <p class="text-[11px] text-slate-600 mt-0.5">Anda dapat mempertahankan rekomendasi ini atau mengubahnya secara manual di bawah.</p>
                     </div>
@@ -356,7 +367,7 @@
                                 + Isi Contoh Deskripsi Baru (Skenario 1)
                             </button>
                             <button type="button" onclick="isiDeskripsiContoh(true)" class="text-[11px] text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 font-semibold px-2.5 py-1 rounded">
-                                + Isi Contoh Deskripsi Serupa di Jl. Sudirman (Uji Deduplikasi Skenario 4)
+                                + Isi Contoh Laporan Serupa di Jl. Sudirman (Uji Deduplikasi)
                             </button>
                         </div>
                     </div>
@@ -431,6 +442,12 @@
         var stepAktif = 1;
         var fotoValid = false;
 
+        function escHtml(v) {
+            return String(v == null ? "" : v).replace(/[&<>"']/g, function(c) {
+                return {"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c];
+            });
+        }
+
         // Inisialisasi Peta Surabaya
         var map = L.map('mapPicker').setView([-7.26550, 112.74700], 16);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -481,7 +498,7 @@
                     if (data && data.display_name) {
                         document.getElementById('lokasi_jalan').value = data.display_name;
                         deteksiWilayahOtomatis(data.display_name);
-                        marker.bindPopup("<strong>Titik Lokasi Terpilih</strong><br>" + data.display_name).openPopup();
+                        marker.bindPopup("<strong>Titik Lokasi Terpilih</strong><br>" + escHtml(data.display_name)).openPopup();
                     }
                 })
                 .catch(function() {});
@@ -511,7 +528,7 @@
                         var btn = document.createElement('button');
                         btn.type = "button";
                         btn.className = "w-full text-left px-4 py-2.5 hover:bg-blue-50 transition flex items-start justify-between gap-2";
-                        btn.innerHTML = "<div><p class='font-bold text-slate-800'>" + item.display_name + "</p><p class='text-[10px] text-slate-400 font-mono'>Lat: " + parseFloat(item.lat).toFixed(5) + ", Lng: " + parseFloat(item.lon).toFixed(5) + "</p></div><span class='text-[#0B5ED7] font-bold shrink-0'>Pilih</span>";
+                        btn.innerHTML = "<div><p class='font-bold text-slate-800'>" + escHtml(item.display_name) + "</p><p class='text-[10px] text-slate-400 font-mono'>Lat: " + parseFloat(item.lat).toFixed(5) + ", Lng: " + parseFloat(item.lon).toFixed(5) + "</p></div><span class='text-[#0B5ED7] font-bold shrink-0'>Pilih</span>";
                         btn.onclick = function() {
                             pilihHasilLokasi(parseFloat(item.lat), parseFloat(item.lon), item.display_name);
                         };
@@ -531,7 +548,7 @@
 
             map.flyTo([lat, lng], 17, { duration: 1.0 });
             marker.setLatLng([lat, lng]);
-            marker.bindPopup("<strong>Lokasi Dipilih</strong><br>" + namaAlamat).openPopup();
+            marker.bindPopup("<strong>Lokasi Dipilih</strong><br>" + escHtml(namaAlamat)).openPopup();
         }
 
         // Fitur Gunakan GPS Perangkat Warga
@@ -549,89 +566,124 @@
                     perbaruiKoordinatDanCariAlamat(lat, lng);
                 },
                 function() {
-                    // Fallback ke titik Jl. Sudirman No. 45 Surabaya jika akses GPS ditolak di PC
-                    pilihHasilLokasi(-7.26550, 112.74700, "Jl. Sudirman No. 45, Surabaya");
+                    alert("Akses GPS ditolak atau tidak tersedia. Silakan cari alamat atau klik titik lokasi pada peta.");
                 }
             );
         }
 
-        // Validasi File Foto Step 1 (REQ-RPT-1 s/d REQ-RPT-3)
+        // Validasi & Analisis Foto Step 1 (REQ-RPT-1 s/d REQ-RPT-3)
+        // Format/ukuran dicek di browser dulu, lalu foto dikirim ke server (/api/analisis-foto)
+        // sehingga hasil di layar sama persis dengan yang dipakai saat laporan dikirim.
+        var BATAS_MB = 10.0;
+        var GAYA_ALERT = {
+            gagal: "mt-4 p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs font-bold",
+            peringatan: "mt-4 p-4 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs font-bold",
+            sukses: "mt-4 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold",
+            info: "mt-4 p-4 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-xs font-bold"
+        };
+
+        function tampilkanAlert1(jenis, teks) {
+            var alertBox = document.getElementById('alert-step-1');
+            alertBox.className = GAYA_ALERT[jenis];
+            alertBox.textContent = teks;
+            alertBox.classList.remove('hidden');
+        }
+
+        function statusCV(teks, kelas) {
+            var el = document.getElementById('infoStatusCV');
+            el.textContent = teks;
+            el.className = kelas;
+        }
+
         function prosesFileDipilih(input) {
+            fotoValid = false;
             if (!input.files || !input.files[0]) return;
             var file = input.files[0];
-            var sizeMB = parseFloat((file.size / (1024 * 1024)).toFixed(2));
-            if (sizeMB === 0) sizeMB = 0.5;
+            var sizeMB = file.size / (1024 * 1024);
+            document.getElementById('infoNamaFile').textContent = file.name;
+            document.getElementById('infoUkuranFile').textContent = sizeMB.toFixed(2) + " MB";
 
-            var reader = new FileReader();
-            reader.onload = function(e) {
-                var img = document.getElementById('imgPreview');
-                img.src = e.target.result;
-                img.classList.remove('hidden');
-                document.getElementById('placeholderPreview').classList.add('hidden');
-            };
-            reader.readAsDataURL(file);
-
-            evaluasiBerkasFoto(file.name, sizeMB);
-        }
-
-        function simulasiFile(namaFile, ukuranMB) {
-            document.getElementById('imgPreview').classList.add('hidden');
+            var img = document.getElementById('imgPreview');
             var ph = document.getElementById('placeholderPreview');
-            ph.classList.remove('hidden');
-            ph.textContent = "Simulasi Berkas: " + namaFile + " (" + ukuranMB + " MB)";
-            evaluasiBerkasFoto(namaFile, ukuranMB);
+            if (file.type.indexOf('image/') === 0 && sizeMB <= BATAS_MB) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    img.src = e.target.result;
+                    img.classList.remove('hidden');
+                    ph.classList.add('hidden');
+                };
+                reader.readAsDataURL(file);
+            } else {
+                img.classList.add('hidden');
+                ph.classList.remove('hidden');
+                ph.textContent = "Pratinjau tidak tersedia";
+            }
+
+            var ext = file.name.split('.').pop().toLowerCase();
+            if ((ext !== 'jpg' && ext !== 'jpeg' && ext !== 'png') || sizeMB > BATAS_MB) {
+                statusCV("Ditolak (Format/Ukuran)", "text-red-600 font-bold");
+                tampilkanAlert1('gagal', "Format harus JPG/PNG dan ukuran maksimal 10MB");
+                return;
+            }
+
+            statusCV("Menganalisis foto...", "text-slate-600 font-bold");
+            tampilkanAlert1('info', "Foto sedang diperiksa oleh layanan AI...");
+            var fd = new FormData();
+            fd.append('foto', file);
+            fetch('/api/analisis-foto', { method: 'POST', body: fd, credentials: 'same-origin' })
+                .then(function(r) {
+                    if (!r.ok || (r.headers.get('content-type') || '').indexOf('application/json') === -1) {
+                        throw new Error('bukan JSON');
+                    }
+                    return r.json();
+                })
+                .then(function(h) {
+                    if (!h.valid) {
+                        statusCV("Ditolak (Format/Ukuran)", "text-red-600 font-bold");
+                        tampilkanAlert1('gagal', h.message);
+                        return;
+                    }
+                    if (!h.detected) {
+                        statusCV("Objek Tidak Relevan", "text-red-600 font-bold");
+                        tampilkanAlert1('peringatan', h.message);
+                        return;
+                    }
+                    fotoValid = true;
+                    var labelMode = h.mode === 'simulasi' ? " (simulasi)" : "";
+                    var labelConf = h.confidence != null ? " " + h.confidence + "%" : "";
+                    document.getElementById('kategori_pilihan').value = h.kategori;
+                    document.getElementById('teksRekomendasiAI').textContent = h.kategori;
+                    document.getElementById('teksSeverityAI').textContent = h.severity + " / 10" + labelMode;
+                    statusCV("Terdeteksi: " + h.kategori + labelConf + labelMode, "text-emerald-600 font-bold");
+                    tampilkanAlert1('sukses', "Foto valid! Rekomendasi kategori: " + h.kategori + labelMode + ".");
+                })
+                .catch(function() {
+                    statusCV("Gagal dianalisis", "text-red-600 font-bold");
+                    tampilkanAlert1('gagal', "Foto gagal dianalisis. Muat ulang halaman (sesi mungkin berakhir) lalu coba lagi.");
+                });
         }
 
-        function evaluasiBerkasFoto(namaFile, ukuranMB) {
-            document.getElementById('filename').value = namaFile;
-            document.getElementById('file_size_mb').value = ukuranMB;
-            document.getElementById('infoNamaFile').textContent = namaFile;
-            document.getElementById('infoUkuranFile').textContent = ukuranMB + " MB";
-
-            var alertBox = document.getElementById('alert-step-1');
-            var statusCV = document.getElementById('infoStatusCV');
-            var ext = namaFile.split('.').pop().toLowerCase();
-
-            // 1. Cek Format & Ukuran <= 10MB
-            if ((ext !== 'jpg' && ext !== 'jpeg' && ext !== 'png') || ukuranMB > 10.0) {
-                fotoValid = false;
-                statusCV.textContent = "Ditolak (Format/Ukuran)";
-                statusCV.className = "text-red-600 font-bold";
-                alertBox.className = "mt-4 p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs font-bold";
-                alertBox.textContent = "Format harus JPG/PNG dan ukuran maksimal 10MB";
-                alertBox.classList.remove('hidden');
+        // Membuat berkas uji coba langsung di browser lalu memasukkannya ke input foto,
+        // sehingga alur unggah yang diuji sama dengan unggahan foto sungguhan.
+        function demoBerkas(namaFile, jenis) {
+            var input = document.getElementById('fileInputAsli');
+            function pasang(file) {
+                var dt = new DataTransfer();
+                dt.items.add(file);
+                input.files = dt.files;
+                prosesFileDipilih(input);
+            }
+            if (jenis === 'besar') {
+                pasang(new File([new Uint8Array(15 * 1024 * 1024)], namaFile, { type: 'image/jpeg' }));
                 return;
             }
-
-            // 2. Cek Objek Jalan Rusak (Computer Vision)
-            var lower = namaFile.toLowerCase();
-            if (lower.includes("kucing") || lower.includes("selfie") || lower.includes("makanan") || lower.includes("hewan")) {
-                fotoValid = false;
-                statusCV.textContent = "Objek Tidak Relevan";
-                statusCV.className = "text-red-600 font-bold";
-                alertBox.className = "mt-4 p-4 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs font-bold";
-                alertBox.textContent = "Objek jalan rusak tidak terdeteksi, silakan ambil ulang foto";
-                alertBox.classList.remove('hidden');
-                return;
-            }
-
-            // 3. Jika Valid -> Set Rekomendasi Kategori AI
-            fotoValid = true;
-            var rekKat = "Jalan Berlubang";
-            var rekSev = "8.5 / 10";
-            if (lower.includes("amblas")) { rekKat = "Jalan Amblas"; rekSev = "8.8 / 10"; }
-            else if (lower.includes("amblas")) { rekKat = "Jalan Amblas"; rekSev = "8.8 / 10 (Urgent)"; }
-            else if (lower.includes("retak")) { rekKat = "Retak Permukaan"; rekSev = "5.4 / 10 (Sedang)"; }
-
-            document.getElementById('kategori_pilihan').value = rekKat;
-            document.getElementById('teksRekomendasiAI').textContent = rekKat;
-            document.getElementById('teksSeverityAI').textContent = rekSev;
-
-            statusCV.textContent = "Terdeteksi: " + rekKat + " (98.4%)";
-            statusCV.className = "text-emerald-600 font-bold";
-            alertBox.className = "mt-4 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold";
-            alertBox.textContent = "Foto valid! Objek jalan rusak berhasil terdeteksi dengan rekomendasi kategori: " + rekKat + ".";
-            alertBox.classList.remove('hidden');
+            var c = document.createElement('canvas');
+            c.width = 480; c.height = 300;
+            var g = c.getContext('2d');
+            g.fillStyle = '#6b7280'; g.fillRect(0, 0, c.width, c.height);
+            g.fillStyle = '#1f2937'; g.beginPath(); g.ellipse(240, 170, 90, 45, 0, 0, Math.PI * 2); g.fill();
+            g.fillStyle = '#ffffff'; g.font = 'bold 16px sans-serif'; g.fillText('Berkas uji: ' + namaFile, 16, 28);
+            c.toBlob(function(blob) { pasang(new File([blob], namaFile, { type: 'image/jpeg' })); }, 'image/jpeg', 0.85);
         }
 
         // Navigasi Antar Step Wizard
@@ -670,7 +722,8 @@
 
             // Isi data ringkasan saat masuk ke Step 4 (Review)
             if (no === 4) {
-                document.getElementById('revFoto').textContent = document.getElementById('filename').value + " (" + document.getElementById('file_size_mb').value + " MB)";
+                var f = document.getElementById('fileInputAsli').files[0];
+                document.getElementById('revFoto').textContent = f ? f.name + " (" + (f.size / (1024 * 1024)).toFixed(2) + " MB)" : "-";
                 document.getElementById('revLokasi').textContent = document.getElementById('lokasi_jalan').value;
                 document.getElementById('revKoordinat').textContent = "Koordinat GPS: " + document.getElementById('tampilanKoordinat').value;
                 document.getElementById('revKategori').textContent = document.getElementById('kategori_pilihan').value;
@@ -702,6 +755,8 @@
             var el = document.getElementById('deskripsi');
             if (isDuplikat) {
                 document.getElementById('lokasi_jalan').value = "Jl. Sudirman No. 45, Surabaya";
+                marker.setLatLng([-7.26550, 112.74700]);
+                perbaruiKoordinatUI(-7.26550, 112.74700);
                 el.value = "Ada jalan berlubang cukup dalam di depan gedung Sudirman yang sangat membahayakan";
             } else {
                 el.value = "Lubang besar di tengah jalan membahayakan pengendara motor";

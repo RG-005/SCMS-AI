@@ -42,18 +42,13 @@ class KontrolDashboard:
         return self._format_hasil(wo_list)
 
     def _format_hasil(self, wo_list):
-        koordinat_default = {
-            "REP-2026-00341": (-7.2655, 112.7470), # Jl. Sudirman / Gubeng
-            "REP-2026-00298": (-7.2680, 112.7455),
-            "REP-2026-00360": (-7.2245, 112.6320), # Wilayah Benowo
-            "REP-2026-00355": (-7.2735, 112.7520), # Jl. Raya Gubeng
-        }
+        wilayah_map = {w.id_wilayah: w.nama_wilayah for w in self.db.query(Wilayah).all()}
 
         hasil_tiket = []
         for wo in wo_list:
-            wilayah_obj = self.db.query(Wilayah).filter_by(id_wilayah=wo.id_wilayah).first()
-            lat, lng = koordinat_default.get(wo.id_work_order, (-7.2575, 112.7521))
-            
+            # Tickets without stored coordinates are listed but get no map marker (lat/lng None).
+            lat, lng = wo.latitude, wo.longitude
+
             if wo.risk_score >= 8.0:
                 warna = "#DC2626" # Merah (Darurat / Urgent)
             elif wo.risk_score >= 6.0:
@@ -63,7 +58,7 @@ class KontrolDashboard:
 
             hasil_tiket.append({
                 "wo": wo,
-                "nama_wilayah": wilayah_obj.nama_wilayah if wilayah_obj else "Kota Surabaya",
+                "nama_wilayah": wilayah_map.get(wo.id_wilayah, "Kota Surabaya"),
                 "label_skor": f"{wo.id_work_order} ({wo.risk_score})",
                 "lat": lat,
                 "lng": lng,

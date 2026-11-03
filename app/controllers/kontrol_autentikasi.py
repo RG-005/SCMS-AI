@@ -1,8 +1,12 @@
+import re
+
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from app.models.entities import Warga, Admin, PenilikJalan
 
 pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
+DOMAIN_EMAIL_STAF = "@dpupr.surabaya.go.id"
 
 
 class KontrolAutentikasi:
@@ -13,37 +17,46 @@ class KontrolAutentikasi:
         if not identifier:
             return {'success': False, 'message': 'Akun tidak ditemukan', 'redirect_url': '/Login'}
         identifier = identifier.strip()
-        akun, peran, nama = None, None, None
+        akun, peran, nama, id_akun, email = None, None, None, None, None
 
-        # Cek Warga berdasarkan Email, Nomor HP, atau NIK 16 Digit
-        warga = self.db.query(Warga).filter(
-            (Warga.email == identifier) |
-            (Warga.no_hp == identifier) |
-            (Warga.nik == identifier)
-        ).first()
-        if warga:
-            akun, peran, nama = warga, 'Warga', warga.nama_warga
-
-        if not akun:
-            admin = self.db.query(Admin).filter(Admin.email_admin == identifier).first()
-            if admin:
-                akun, peran, nama = admin, ('Kepala Bidang' if admin.is_kepala_bidang else 'Admin'), admin.nama_admin
+        # Staff accounts are matched first, so a citizen account can never
+        # shadow a staff email (registration also blocks staff emails).
+        identifier_lower = identifier.lower()
+        admin = self.db.query(Admin).filter(func.lower(Admin.email_admin) == identifier_lower).first()
+        if admin:
+            akun, peran, nama = admin, ('Kepala Bidang' if admin.is_kepala_bidang else 'Admin'), admin.nama_admin
+            id_akun, email = admin.id_admin, admin.email_admin
 
         if not akun:
-            penilik = self.db.query(PenilikJalan).filter(PenilikJalan.email_penilik == identifier).first()
+            penilik = self.db.query(PenilikJalan).filter(func.lower(PenilikJalan.email_penilik) == identifier_lower).first()
             if penilik:
                 akun, peran, nama = penilik, 'Penilik Jalan', penilik.nama_penilik
+                id_akun, email = penilik.id_penilik, penilik.email_penilik
+
+        if not akun:
+            # Warga: email, phone number, or 16-digit NIK
+            warga = self.db.query(Warga).filter(
+                (func.lower(Warga.email) == identifier_lower) |
+                (Warga.no_hp == identifier) |
+                (Warga.nik == identifier)
+            ).first()
+            if warga:
+                akun, peran, nama = warga, 'Warga', warga.nama_warga
+                id_akun, email = warga.id_warga, warga.email
 
         if not akun:
             return {'success': False, 'message': 'Akun tidak ditemukan', 'redirect_url': '/Login'}
+        # Check the password before revealing whether the account is inactive.
+        if not pwd_context.verify(password or "", akun.password_hash):
+            return {'success': False, 'message': 'Email/nomor HP atau password salah', 'redirect_url': '/Login'}
         if not akun.is_active:
             return {'success': False, 'message': 'Akun Anda tidak aktif, silakan hubungi administrator', 'redirect_url': '/Login'}
-        if not pwd_context.verify(password, akun.password_hash):
-            return {'success': False, 'message': 'Email/nomor HP atau password salah', 'redirect_url': '/Login'}
 
         redirect_url = '/Beranda' if peran == 'Warga' else '/Dashboard'
         return {
             'success': True,
+            'id': id_akun,
+            'email': email,
             'role': peran,
             'nama': nama,
             'identifier': identifier,
@@ -124,37 +137,46 @@ class KontrolAutentikasi:
                 "user": None
             }
 
-        # 7. Cek keunikan Email (jika diisi)
-        if email_clean and self.db.query(Warga).filter(Warga.email == email_clean).first():
-            return {
-                "success": False,
-                "message": "Email sudah terdaftar pada akun lain",
-                "user": None
-            }
+        # 7. Email: valid shape, not a staff address, unique across ALL account types
+        if email_clean:
+            email_lower = email_clean.lower()
+            if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email_clean):
+                return {"success": False, "message": "Format email tidak valid", "user": None}
+            email_staf = (
+                email_lower.endswith(DOMAIN_EMAIL_STAF)
+                or self.db.query(Admin).filter(func.lower(Admin.email_admin) == email_lower).first()
+                or self.db.query(PenilikJalan).filter(func.lower(PenilikJalan.email_penilik) == email_lower).first()
+            )
+            if email_staf:
+                return {
+                    "success": False,
+                    "message": "Email instansi tidak dapat digunakan untuk akun Warga",
+                    "user": None
+                }
+            if self.db.query(Warga).filter(func.lower(Warga.email) == email_lower).first():
+                return {
+                    "success": False,
+                    "message": "Email sudah terdaftar pada akun lain",
+                    "user": None
+                }
 
-        # 8. Generate ID Warga baru (USR-03, USR-04, dst.)
-        jumlah_warga = self.db.query(Warga).count()
-        id_baru = f"USR-{jumlah_warga + 1:02d}"
-        while self.db.query(Warga).filter(Warga.id_warga == id_baru).first():
-            jumlah_warga += 1
-            id_baru = f"USR-{jumlah_warga + 1:02d}"
+        # 8. Generate ID Warga baru (USR-03, USR-04, dst.) from the highest existing number
+        angka = [int(m.group(1)) for (i,) in self.db.query(Warga.id_warga).all() if (m := re.fullmatch(r"USR-(\d+)", i or ""))]
+        id_baru = f"USR-{max(angka, default=0) + 1:02d}"
 
         # Hash password dengan bcrypt (sama persis dengan seed.py & autentikasi)
         hashed_pw = pwd_context.hash(pass_clean)
 
-        data_warga = {
-            "id_warga": id_baru,
-            "nik": nik_clean,
-            "nama_warga": nama_clean,
-            "no_hp": hp_clean,
-            "email": email_clean if email_clean else f"{hp_clean}@warga.surabaya.id",
-            "password_hash": hashed_pw,
-            "is_active": True
-        }
-        if hasattr(Warga, "alamat_domisili"):
-            data_warga["alamat_domisili"] = alamat_clean if alamat_clean else "Kota Surabaya"
-
-        warga_baru = Warga(**data_warga)
+        warga_baru = Warga(
+            id_warga=id_baru,
+            nik=nik_clean,
+            nama_warga=nama_clean,
+            no_hp=hp_clean,
+            email=email_clean if email_clean else f"{hp_clean}@warga.surabaya.id",
+            alamat_domisili=alamat_clean if alamat_clean else "Kota Surabaya",
+            password_hash=hashed_pw,
+            is_active=True,
+        )
         self.db.add(warga_baru)
         self.db.commit()
         self.db.refresh(warga_baru)

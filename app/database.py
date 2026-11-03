@@ -19,6 +19,30 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
 
+# Kolom yang ditambahkan setelah Sprint 1. create_all() tidak mengubah tabel yang
+# sudah ada, jadi kolom ini ditambahkan di sini agar database lama tetap bisa dipakai.
+KOLOM_TAMBAHAN = {
+    "warga": {"alamat_domisili": "VARCHAR(255)"},
+    "work_order": {"latitude": "FLOAT", "longitude": "FLOAT"},
+    "laporan": {"latitude": "FLOAT", "longitude": "FLOAT"},
+}
+
+
+def pastikan_kolom_terbaru(eng=None):
+    from sqlalchemy import inspect, text
+
+    eng = eng or engine
+    insp = inspect(eng)
+    with eng.begin() as conn:
+        for tabel, kolom in KOLOM_TAMBAHAN.items():
+            if not insp.has_table(tabel):
+                continue
+            ada = {c["name"] for c in insp.get_columns(tabel)}
+            for nama, tipe in kolom.items():
+                if nama not in ada:
+                    conn.execute(text(f"ALTER TABLE {tabel} ADD COLUMN {nama} {tipe}"))
+
+
 # Dependency untuk membuka & menutup sesi database otomatis di setiap request
 def get_db():
     db = SessionLocal()

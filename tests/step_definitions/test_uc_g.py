@@ -9,8 +9,9 @@ scenarios("../features/uc_g_penugasan.feature")
 
 
 @pytest.fixture
-def context(browser, live_server):
+def context(browser, live_server, login_as):
     seed_data()
+    login_as("admin@dpupr.surabaya.go.id")
     db = SessionLocal()
     yield {
         "db": db,
@@ -26,7 +27,7 @@ def context(browser, live_server):
 
 def _open_work_orders_page(context, ticket_id: str):
     driver = context["browser"]
-    driver.get(f"{context['base_url']}/work-orders?selected_id={ticket_id}")
+    driver.get(f"{context['base_url']}/work-orders?select_ticket={ticket_id}")
     time.sleep(0.35)
 
 

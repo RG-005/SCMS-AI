@@ -57,6 +57,8 @@ class KontrolPenugasan:
 
     def tugaskan_penilik(self, id_work_order: str, nama_penilik: str = None):
         wo = self.db.query(WorkOrder).filter_by(id_work_order=id_work_order).first()
+        if not wo:
+            return None
         penilik_tersedia = self.db.query(PenilikJalan).filter_by(
             id_wilayah=wo.id_wilayah,
             status_ketersediaan="Tersedia"

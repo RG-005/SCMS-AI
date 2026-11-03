@@ -30,7 +30,7 @@ else Valid & Terdeteksi Duplikat
 else Valid & Laporan Baru
     KontrolPelaporan -> WorkOrder : 3.1 buat WorkOrder baru ("Dilaporkan")
     activate WorkOrder
-    WorkOrder --> KontrolPelaporan : 3.2 nomor tiket REP-2026-00341
+    WorkOrder --> KontrolPelaporan : 3.2 nomor tiket baru (REP-YYYY-NNNNN)
     deactivate WorkOrder
     KontrolPelaporan --> FormLaporan : 3.3 nomor tiket & status "Dilaporkan"
     FormLaporan --> Warga : 3.4 tampilkan nomor tiket
