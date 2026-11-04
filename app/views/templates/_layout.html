@@ -59,6 +59,7 @@
                 {% if peran in ['Admin', 'Kepala Bidang'] %}{{ tab('/verifikasi', 'Verifikasi Laporan', 'verifikasi', aktif) }}{% endif %}
                 {{ tab('/work-orders', 'Penugasan & Work Order (SPK)', 'work-orders', aktif) }}
                 {% if peran in ['Admin', 'Kepala Bidang'] %}{{ tab('/master-data', 'Data Master', 'master', aktif) }}{% endif %}
+                {% if peran in ['Admin', 'Kepala Bidang'] %}{{ tab('/laporan-kinerja', 'Laporan Kinerja', 'kinerja', aktif) }}{% endif %}
             {% endif %}
         </nav>
     </header>

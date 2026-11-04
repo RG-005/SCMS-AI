@@ -6,7 +6,7 @@ from typing import Optional
 from urllib.parse import quote
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -20,6 +20,7 @@ from app.controllers.kontrol_autentikasi import KontrolAutentikasi
 from app.controllers.kontrol_dashboard import KontrolDashboard
 from app.controllers.kontrol_inspeksi import KontrolInspeksi
 from app.controllers.kontrol_lacak import KontrolLacak
+from app.controllers.kontrol_laporan_kinerja import KontrolLaporanKinerja
 from app.controllers.kontrol_master_data import STATUS_KETERSEDIAAN, KontrolMasterData
 from app.controllers.kontrol_notifikasi import KontrolNotifikasi
 from app.controllers.kontrol_penanganan import KontrolPenanganan
@@ -777,3 +778,38 @@ def proses_progres_admin(request: Request, ticket_id: str, status_baru: str = Fo
         "flash": {"pesan": hasil["message"], "jenis": "gagal"},
         "form_progres": {"status_baru": status_baru, "catatan_progres": catatan_progres},
     })
+
+
+# ================= UC-L: LAPORAN KINERJA INFRASTRUKTUR (KEPALA BIDANG / ADMIN) =================
+LIHAT_LAPORAN_KINERJA = wajib_peran(PERAN_ADMIN, PERAN_KABID)
+JENIS_UNDUHAN = ("wilayah", "tiket")
+
+
+@app.get("/laporan-kinerja", response_class=HTMLResponse)
+def halaman_laporan_kinerja(request: Request, tanggal_mulai: str = "", tanggal_akhir: str = "",
+                            wilayah: str = "Semua", pengguna: dict = Depends(LIHAT_LAPORAN_KINERJA),
+                            db: Session = Depends(get_db)):
+    data = KontrolLaporanKinerja(db).rekap(tanggal_mulai, tanggal_akhir, wilayah)
+    pesan = None if data["success"] else {"jenis": "gagal", "pesan": data["message"]}
+    return render(request, "laporan_kinerja.html", {**data, "pesan": pesan},
+                  status_code=200 if data["success"] else 400)
+
+
+@app.get("/laporan-kinerja/unduh")
+def unduh_laporan_kinerja(jenis: str = "wilayah", tanggal_mulai: str = "", tanggal_akhir: str = "",
+                          wilayah: str = "Semua", pengguna: dict = Depends(LIHAT_LAPORAN_KINERJA),
+                          db: Session = Depends(get_db)):
+    if jenis not in JENIS_UNDUHAN:
+        raise HTTPException(status_code=400, detail="Jenis unduhan harus 'wilayah' atau 'tiket'")
+    controller = KontrolLaporanKinerja(db)
+    data = controller.rekap(tanggal_mulai, tanggal_akhir, wilayah)
+    if not data["success"]:
+        raise HTTPException(status_code=400, detail=data["message"])
+    isi = controller.csv_per_wilayah(data) if jenis == "wilayah" else controller.csv_per_tiket(data)
+    # dates were validated by rekap(), so they are safe to put in the file name
+    periode = f"{tanggal_mulai.strip() or 'awal'}_sd_{tanggal_akhir.strip() or 'kini'}"
+    return Response(
+        content=isi.encode("utf-8"),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="laporan_kinerja_{jenis}_{periode}.csv"'},
+    )

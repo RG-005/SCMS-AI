@@ -37,10 +37,15 @@ SCMS-AI adalah platform web terintegrasi berbasis Artificial Intelligence (Compu
 * **UC-G (`uc_g_penugasan.feature` — 2 skenario):** Tugaskan Penilik Jalan tersedia (`Ditugaskan`) dan penanganan saat semua penilik penuh (`Menunggu Penugasan`).
 * **UC-H (`uc_h_dashboard.feature` — 2 skenario):** Peta GIS & KPI prioritas serta filter multi-parameter dengan pesan kosong.
 
-### Sprint 2 (12 Skenario)
+### Sprint 2 (14 Skenario)
 * **UC-C (`uc_c_lacak_status.feature` — 2 skenario):** Warga melacak detail & timeline laporan (`LAP-2026-0001`) serta penanganan nomor tiket tidak ditemukan (`LAP-9999-XXXX`).
 * **UC-D (`uc_d_kelola_master_data.feature` — 2 skenario):** Admin menambah Penilik Jalan baru dengan NIP 18 digit serta penolakan duplikasi NIP/Kode Wilayah.
 * **UC-E (`uc_e_inspeksi_lapangan.feature` — 2 skenario):** Penilik Jalan menyimpan dimensi kerusakan, catatan teknis, rekomendasi, dan foto survei (`Terinspeksi`), serta penolakan form inspeksi belum lengkap.
 * **UC-F (`uc_f_update_perbaikan.feature` — 3 skenario):** Admin menerbitkan SPK (`Dalam Proses`), petugas menyelesaikan perbaikan dengan unggah foto bukti (`Selesai`), serta penolakan status `Selesai` tanpa foto bukti perbaikan.
 * **UC-I (`uc_i_notifikasi_status.feature` — 1 skenario):** Warga mengklik notifikasi belum dibaca, status berubah menjadi dibaca, dan diarahkan ke halaman `/lacak` laporan terkait.
 * **UC-J (`uc_j_rating_ulasan.feature` — 2 skenario):** Warga mengirim rating bintang 1-5 dan ulasan pada laporan `Selesai`, serta penolakan jika bintang belum dipilih.
+* **UC-L (`uc_l_laporan_kinerja.feature` — 2 skenario):** Kepala Bidang/Admin melihat dan mengunduh rekap kinerja penanganan, kepatuhan SLA, dan statistik risiko per wilayah rayon di `/laporan-kinerja`.
+   * **`REQ-KIN-1`:** Halaman `/laporan-kinerja` (Kepala Bidang & Admin) dengan filter periode (tanggal tiket diterima, WIB) dan wilayah; tanggal tidak valid ditolak dengan pesan `"Format tanggal tidak valid (gunakan YYYY-MM-DD)"` atau `"Tanggal mulai tidak boleh setelah tanggal akhir"`.
+   * **`REQ-KIN-2`:** Status SLA tiap tiket dihitung dari entri pertama `riwayat_status` hingga `tanggal_selesai` terhadap `sla_rekomendasi`: `Tepat Waktu`/`Terlambat` (selesai) atau `Dalam SLA`/`Melewati SLA` (aktif). Kepatuhan SLA = selesai tepat waktu ÷ seluruh tiket selesai.
+   * **`REQ-KIN-3`:** Rekap per wilayah dan per prioritas: total, selesai, aktif, tingkat penyelesaian, kepatuhan SLA, tiket aktif melewati SLA, rata-rata waktu penyelesaian, rata-rata & tertinggi risk score, jumlah Urgent, rata-rata rating warga.
+   * **`REQ-KIN-4`:** Unduhan CSV (rekap wilayah / detail tiket, UTF-8 BOM, teks diamankan dari formula spreadsheet) dan cetak/simpan PDF lewat browser. Jika periode kosong, tampilkan `"Tidak ada data kinerja pada periode yang dipilih"` tanpa tombol unduh.
