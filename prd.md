@@ -181,6 +181,10 @@ Untuk pengembangan tahap selanjutnya (Sprint 2), sistem telah menyiapkan skema t
    * Setelah tiket berstatus `"Selesai"`, Warga dapat memberikan penilaian bintang (`nilai_rating` skala $1 - 5$) dan `komentar` pada tabel `rating`.
 7. **UC-L — Mengekspor Laporan Kinerja Infrastruktur (Kepala Bidang / Admin):**
    * Kepala Bidang dapat mengunduh rekapitulasi kinerja penanganan, kepatuhan SLA, dan statistik risiko per wilayah rayon.
+   * **`REQ-KIN-1`:** Halaman `/laporan-kinerja` (Kepala Bidang & Admin) dengan filter periode (tanggal tiket diterima, WIB) dan wilayah; tanggal tidak valid ditolak dengan pesan `"Format tanggal tidak valid (gunakan YYYY-MM-DD)"` atau `"Tanggal mulai tidak boleh setelah tanggal akhir"`.
+   * **`REQ-KIN-2`:** Status SLA tiap tiket dihitung dari entri pertama `riwayat_status` hingga `tanggal_selesai` terhadap `sla_rekomendasi`: `Tepat Waktu`/`Terlambat` (selesai) atau `Dalam SLA`/`Melewati SLA` (aktif). Kepatuhan SLA = selesai tepat waktu ÷ seluruh tiket selesai.
+   * **`REQ-KIN-3`:** Rekap per wilayah dan per prioritas: total, selesai, aktif, tingkat penyelesaian, kepatuhan SLA, tiket aktif melewati SLA, rata-rata waktu penyelesaian, rata-rata & tertinggi risk score, jumlah Urgent, rata-rata rating warga.
+   * **`REQ-KIN-4`:** Unduhan CSV (rekap wilayah / detail tiket, UTF-8 BOM, teks diamankan dari formula spreadsheet) dan cetak/simpan PDF lewat browser. Jika periode kosong, tampilkan `"Tidak ada data kinerja pada periode yang dipilih"` tanpa tombol unduh.
 
 ---
 

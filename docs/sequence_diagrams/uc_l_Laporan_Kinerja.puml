@@ -1,0 +1,37 @@
+@startuml
+title UC-L - Mengekspor Laporan Kinerja Infrastruktur
+
+actor "Kepala Bidang / Admin" as Kabid
+boundary HalamanLaporanKinerja
+control KontrolLaporanKinerja
+entity WorkOrder
+entity RiwayatStatus
+entity Rating
+
+Kabid -> HalamanLaporanKinerja : 1. buka /laporan-kinerja, pilih periode & wilayah
+activate HalamanLaporanKinerja
+HalamanLaporanKinerja -> KontrolLaporanKinerja : 1.1 rekap(tanggal_mulai, tanggal_akhir, wilayah)
+activate KontrolLaporanKinerja
+
+alt Tanggal tidak valid
+    KontrolLaporanKinerja --> HalamanLaporanKinerja : 1.2 pesan error (HTTP 400)
+else Tanggal valid
+    KontrolLaporanKinerja -> RiwayatStatus : 1.2 waktu mulai tiap tiket
+    KontrolLaporanKinerja -> WorkOrder : 1.3 tiket per wilayah (status, SLA, risk, tanggal_selesai)
+    KontrolLaporanKinerja -> Rating : 1.4 rating warga per tiket
+    alt Tidak ada tiket pada periode
+        KontrolLaporanKinerja --> HalamanLaporanKinerja : 1.5 "Tidak ada data kinerja pada periode yang dipilih"
+    else Ada tiket
+        KontrolLaporanKinerja --> HalamanLaporanKinerja : 1.5 KPI, rekap per wilayah & prioritas, detail tiket
+    end
+end
+deactivate KontrolLaporanKinerja
+
+Kabid -> HalamanLaporanKinerja : 2. klik "Unduh Rekap Wilayah (CSV)"
+HalamanLaporanKinerja -> KontrolLaporanKinerja : 2.1 rekap(...) + csv_per_wilayah()
+activate KontrolLaporanKinerja
+KontrolLaporanKinerja --> HalamanLaporanKinerja : 2.2 berkas laporan_kinerja_wilayah_<periode>.csv
+deactivate KontrolLaporanKinerja
+HalamanLaporanKinerja --> Kabid : 2.3 unduhan CSV
+deactivate HalamanLaporanKinerja
+@enduml

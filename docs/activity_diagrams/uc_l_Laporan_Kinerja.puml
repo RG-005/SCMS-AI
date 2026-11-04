@@ -1,0 +1,44 @@
+@startuml
+title Activity Diagram - UC-L: Mengekspor Laporan Kinerja Infrastruktur
+|Kepala Bidang / Admin|
+start
+:Membuka menu "Laporan Kinerja";
+
+|Sistem (SCMS-AI)|
+:Menampilkan form filter (Tanggal Mulai, Tanggal Akhir, Wilayah);
+
+|Kepala Bidang / Admin|
+:Memilih periode dan wilayah;
+:Klik tombol "Tampilkan";
+
+|Sistem (SCMS-AI)|
+:Memvalidasi format dan urutan tanggal;
+if (Tanggal valid?) then (Tidak)
+  :Menampilkan pesan error\n"Format tanggal tidak valid" atau\n"Tanggal mulai tidak boleh setelah tanggal akhir";
+  stop
+else (Ya)
+endif
+:Mengambil Work Order yang diterima pada periode\n(waktu mulai = entri pertama riwayat_status);
+if (Ada tiket pada periode?) then (Tidak)
+  :Menampilkan pesan\n"Tidak ada data kinerja pada periode yang dipilih";
+  :Menyembunyikan tombol unduh;
+  stop
+else (Ya)
+endif
+:Menghitung status SLA tiap tiket\n(Tepat Waktu / Terlambat / Dalam SLA / Melewati SLA);
+:Menyusun rekap per wilayah dan per prioritas\n(penyelesaian, kepatuhan SLA, risk score, rating);
+:Menampilkan KPI, tabel rekap, dan detail tiket;
+
+|Kepala Bidang / Admin|
+if (Aksi?) then (Unduh CSV)
+  :Klik "Unduh Rekap Wilayah (CSV)"\natau "Unduh Detail Tiket (CSV)";
+  |Sistem (SCMS-AI)|
+  :Membuat berkas CSV (UTF-8 BOM,\nsel teks diamankan dari formula);
+  :Mengirim berkas sebagai unduhan;
+else (Cetak)
+  |Kepala Bidang / Admin|
+  :Klik "Cetak / Simpan PDF";
+  :Browser mencetak tampilan laporan;
+endif
+stop
+@enduml
