@@ -54,7 +54,7 @@ Sistem ini mengintegrasikan tiga pilar kecerdasan utama:
 
 ---
 
-## 🧭 Cakupan Fitur Sprint 2 (12 Skenario BDD)
+## 🧭 Cakupan Fitur Sprint 2 (14 Skenario BDD)
 
 Alur status tiket: `Dilaporkan → Disetujui / Menunggu Inspeksi → Ditugaskan → Terinspeksi → Dalam Proses → Selesai`. Setiap perubahan status dicatat di tabel `riwayat_status` (linimasa) dan otomatis membuat notifikasi untuk **setiap warga pelapor** tiket tersebut (`app/services/alur_status.py`).
 
@@ -64,6 +64,7 @@ Alur status tiket: `Dilaporkan → Disetujui / Menunggu Inspeksi → Ditugaskan 
 4. **UC-F — Update Perbaikan (3 skenario):** Admin menerbitkan SPK (nomor unik + tim pelaksana) dari halaman Work Order → `Dalam Proses`; Penilik/Admin memperbarui progres dan menutup tiket → `Selesai` (wajib foto bukti).
 5. **UC-I — Notifikasi (`/notifikasi`, 1 skenario):** daftar notifikasi dengan lencana jumlah belum dibaca; klik notifikasi menandainya terbaca dan membuka progres laporan.
 6. **UC-J — Rating & Ulasan (2 skenario):** setelah `Selesai`, warga memberi 1–5 bintang dan ulasan (sekali per laporan).
+7. **UC-L — Laporan Kinerja Infrastruktur (`/laporan-kinerja`, 2 skenario):** Kepala Bidang/Admin memfilter periode & wilayah, melihat KPI, kepatuhan SLA, rata-rata waktu penyelesaian, statistik risiko per wilayah dan per prioritas, rating warga, serta detail status SLA tiap tiket (`Tepat Waktu`, `Terlambat`, `Dalam SLA`, `Melewati SLA`). Rekap dapat diunduh sebagai CSV (rekap wilayah / detail tiket) atau dicetak/disimpan sebagai PDF lewat browser. Jam SLA dihitung sejak tiket pertama kali diterima (entri pertama `riwayat_status`) hingga `tanggal_selesai`.
 
 ---
 
@@ -82,7 +83,8 @@ scms-ai-pupr/
 │   │   ├── kontrol_master_data.py   # Controller UC-D (Wilayah & Penilik Jalan)
 │   │   ├── kontrol_inspeksi.py      # Controller UC-E (Inspeksi Lapangan)
 │   │   ├── kontrol_penanganan.py    # Controller UC-F (SPK & Progres Perbaikan)
-│   │   └── kontrol_notifikasi.py    # Controller UC-I (Notifikasi Warga)
+│   │   ├── kontrol_notifikasi.py    # Controller UC-I (Notifikasi Warga)
+│   │   └── kontrol_laporan_kinerja.py # Controller UC-L (Rekap Kinerja, Kepatuhan SLA & Ekspor CSV)
 │   ├── models/
 │   │   └── entities.py              # Definisi 10 Tabel Physical Data Model (SQLAlchemy)
 │   ├── services/
@@ -109,9 +111,10 @@ scms-ai-pupr/
 │   └── sequence_diagrams/           # File PlantUML (.puml) Sequence Diagram 5 Use Case
 ├── tests/
 │   ├── features/                    # Spesifikasi skenario Gherkin (.feature)
-│   ├── step_definitions/            # Pytest-BDD: 17 skenario Sprint 1 + 12 skenario Sprint 2 + 3 E2E Selenium
+│   ├── step_definitions/            # Pytest-BDD: 17 skenario Sprint 1 + 14 skenario Sprint 2 + 3 E2E Selenium
 │   ├── test_keamanan_dan_logika.py  # Uji cepat Sprint 1: hak akses, unggah foto, deduplikasi, risk score
-│   └── test_sprint2.py              # Uji cepat Sprint 2: hak akses, kepemilikan data, alur status, notifikasi
+│   ├── test_sprint2.py              # Uji cepat Sprint 2: hak akses, kepemilikan data, alur status, notifikasi
+│   └── test_laporan_kinerja.py      # Uji cepat UC-L: hak akses, perhitungan SLA, filter, ekspor CSV
 ├── pytest.ini                       # Konfigurasi pytest runner
 ├── requirements.txt                 # Daftar dependensi paket Python
 ├── requirements-ai.txt              # (Opsional) model AI sungguhan: ultralytics, sentence-transformers
@@ -159,7 +162,7 @@ python -m database.seed --force    # PostgreSQL: hanya jika memang ingin mereset
 Pengujian **selalu** memakai database terpisah `scms_test.db`, sehingga database di `.env` tidak tersentuh.
 ```bash
 pytest -v                                      # semua: 29 BDD + 3 E2E Selenium + 118 uji cepat (butuh Chrome/Edge)
-pytest tests/test_keamanan_dan_logika.py tests/test_sprint2.py -v   # uji cepat saja, tanpa browser
+pytest tests/test_keamanan_dan_logika.py tests/test_sprint2.py tests/test_laporan_kinerja.py -v   # uji cepat saja, tanpa browser
 HEADLESS=1 pytest -v                           # browser tanpa jendela
 ```
 
