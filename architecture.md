@@ -76,7 +76,7 @@
 | **Geospatial & Mapping** | Leaflet.js 1.9.4, OpenStreetMap, Nominatim API | Visualisasi titik kerusakan jalan, lingkaran heatmap severity, serta Forward & Reverse Geocoding. |
 | **ORM & Database** | SQLAlchemy 2.0, PostgreSQL (`psycopg2-binary`), SQLite | Pemetaan 11 tabel ORM, menggunakan SQLite terpisah (`scms_test.db`) saat pengujian otomatis. |
 | **AI Pipeline (CV & NLP)** | Pillow, YOLOv8 v4 (`ultralytics` + `model_config.json`), Sentence-Transformers | Validasi foto asli, deteksi kerusakan jalan dengan ambang per kelas & kotak deteksi, dan kemiripan semantik deskripsi. |
-| **Automated Testing** | Pytest, Pytest-BDD, Selenium WebDriver, FastAPI TestClient | Menjalankan 594 tes otomatis (65 skenario BDD + 3 E2E Selenium + 526 fast integration tests; 1 uji migrasi PostgreSQL dilewati tanpa `SCMS_TEST_POSTGRES_URL`). |
+| **Automated Testing** | Pytest, Pytest-BDD, Selenium WebDriver, FastAPI TestClient | Menjalankan 596 tes otomatis (67 skenario BDD + 3 E2E Selenium + 526 fast integration tests; 1 uji migrasi PostgreSQL dilewati tanpa `SCMS_TEST_POSTGRES_URL`). |
 
 ## 3. Lapisan Model & Entitas (`app/models/entities.py` — 11 Tabel)
 1. **`Warga` (`warga`):** `id_warga` (PK), `nik`, `nama_warga`, `email`, `no_hp`, `password_hash`, `alamat_domisili`, `is_active`.

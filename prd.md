@@ -172,6 +172,7 @@ Tanpa login: halaman dialihkan ke `/Login`; endpoint JSON polling mengembalikan 
 | `uc_i_kirim_ulang_notifikasi.feature` | 4 | Rizaldi — **terimplementasi (Bagian 3):** "Notification is delivered on the first attempt", "Failed notification is retried automatically and listed as failed", "Admin resends a failed notification", "Head of Division cannot resend notifications" |
 | `uc_i_push_notifikasi.feature` | 4 | Alfarrel — **terimplementasi (Bagian 5):** "Badge and toast update without refreshing the page", "Browser notification is shown when the citizen grants permission", "Permission denied falls back to the in-page toast only", "Unread-count endpoint is only for the logged-in citizen" |
 | `uc_l_grafik_kinerja.feature` | 4 | Alfarrel — **terimplementasi (Bagian 4):** "Charts show the same numbers as the tables", "Charts follow the region filter", "Closed tickets are shown separately and not counted as completed", "Empty period shows no charts" |
+| `integrasi_alur_penuh.feature` | 2 | Rizaldi & Alfarrel (backlog 4) — **terimplementasi (Bagian 6):** "A citizen report goes from submission to rating", "A rejected report is closed with a reason"; satu tiket melewati semua aktor dan status lewat rute web sungguhan |
 
 ### 5.8 Data Seed & Konfigurasi yang Dibutuhkan
 * **Dipakai ulang:** REP-2026-00298/LAP-2026-0002 (Ditugaskan, Budi Santoso, Ibu Sari Rahayu), REP-2026-00341/LAP-2026-0001 (Bpk. Tri Wahyudi; status disiapkan step seperti UC-F/UC-J), data periode Oktober 2026 (5 tiket: Urgent 2, Tinggi 2, Borderline 1; Selesai 1), notifikasi NTF-SEED-0001.
