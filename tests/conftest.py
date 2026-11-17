@@ -5,6 +5,7 @@ import os
 os.environ["DATABASE_URL"] = os.environ.get("SCMS_TEST_DATABASE_URL", "sqlite:///./scms_test.db")
 os.environ.setdefault("SCMS_SECRET_KEY", "test-secret-key-for-pytest-only")
 os.environ["SCMS_CV_BACKEND"] = "simulasi"  # tes selalu memakai AI simulasi, walau .env memakai yolov8
+os.environ.setdefault("SCMS_POLL_NOTIF_DETIK", "1")  # Sprint 3: live notification polling, fast in tests
 import time
 import socket
 import threading

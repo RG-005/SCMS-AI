@@ -25,6 +25,12 @@ class KontrolNotifikasi:
     def jumlah_belum_dibaca(self, id_warga: str) -> int:
         return self.db.query(Notifikasi).filter_by(id_warga=id_warga, status_baca=False).count()
 
+    def belum_dibaca_terbaru(self, id_warga: str, batas: int = 5) -> list:
+        """Sprint 3 backlog 2: the citizen's newest unread notifications, for the live badge and toast."""
+        return (self.db.query(Notifikasi).filter_by(id_warga=id_warga, status_baca=False)
+                .order_by(Notifikasi.waktu_kirim.desc(), Notifikasi.id_notifikasi.desc())
+                .limit(batas).all())
+
     def buka(self, id_notifikasi: str, id_warga: str) -> Optional[str]:
         """Mark a citizen's own notification as read; return the report it points to."""
         notif = self.db.query(Notifikasi).filter_by(id_notifikasi=id_notifikasi, id_warga=id_warga).first()
