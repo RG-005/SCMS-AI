@@ -110,8 +110,10 @@
         if (!berhenti) pewaktu = setTimeout(tanya, intervalMs);
     }
 
+    // Polls even while the tab is hidden: that is exactly when a browser notification is useful,
+    // and a window covered by another one counts as hidden on Windows. Browsers already slow down
+    // timers in background tabs on their own.
     function tanya() {
-        if (document.hidden) { jadwalkan(); return; }  // resumes on visibilitychange
         fetch(konfig.url, {credentials: 'same-origin', cache: 'no-store', headers: {'Accept': 'application/json'}})
             .then(function (r) {
                 if (r.status === 401 || r.status === 403) { berhenti = true; return null; }  // logged out
@@ -122,8 +124,9 @@
             .then(jadwalkan);
     }
 
+    // Coming back to the tab: check right away instead of waiting for the next round.
     document.addEventListener('visibilitychange', function () {
-        if (!document.hidden && !berhenti) tanya();
+        if (!document.hidden && !berhenti) { clearTimeout(pewaktu); tanya(); }
     });
 
     // --------------------------------------- opt-in button on /notifikasi

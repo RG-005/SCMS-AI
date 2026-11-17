@@ -180,6 +180,8 @@ def test_berkas_skrip_tersedia():
     assert r.status_code == 200
     assert "fetch(konfig.url" in r.text  # the URL comes from the page settings
     assert "badgeNotif" in r.text and "toastNotif" in r.text and "Notification" in r.text
+    # polling must not pause in a hidden/covered window (browser notifications matter most there)
+    assert "if (document.hidden) {" not in r.text
 
 
 # ------------------------------------------------------------- interval setting
