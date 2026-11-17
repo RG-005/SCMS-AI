@@ -1,0 +1,21 @@
+{#- Sprint 3 backlog 2 (PRD 5.2): live notification badge and toast for citizens.
+    Light polling of GET /api/notifikasi/belum-dibaca; no Web Push, VAPID or service worker.
+    Included by _layout.html and by the citizen pages that have their own header. -#}
+{% if notif_langsung %}
+<div id="toastNotif" hidden class="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-96 z-50 bg-white border border-slate-200 shadow-xl rounded-xl p-4"
+     role="status" aria-live="polite">
+    <div class="flex items-start gap-3">
+        <span class="w-8 h-8 rounded-full bg-blue-50 text-[#0B5ED7] flex items-center justify-center shrink-0" aria-hidden="true">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+        </span>
+        <div class="min-w-0 flex-1">
+            <p id="toastNotifJudul" class="text-xs font-extrabold text-slate-900"></p>
+            <p id="toastNotifPesan" class="text-[11px] text-slate-600 mt-0.5 break-words"></p>
+            <a id="toastNotifBuka" href="/notifikasi" class="inline-block mt-2 text-[11px] font-bold text-[#0B5ED7] hover:underline">Lihat progres laporan</a>
+        </div>
+        <button type="button" id="toastNotifTutup" aria-label="Tutup pemberitahuan" class="text-slate-400 hover:text-slate-700 text-lg leading-none px-1">&times;</button>
+    </div>
+</div>
+<script type="application/json" id="konfigNotifLangsung">{{ notif_langsung | tojson }}</script>
+<script src="/static/js/notifikasi_langsung.js" defer></script>
+{% endif %}

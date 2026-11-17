@@ -14,7 +14,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.auth import (
     HALAMAN_AWAL, PERAN_ADMIN, PERAN_KABID, PERAN_PENILIK, PERAN_STAF, PERAN_WARGA,
-    AksesDitolak, LoginDiperlukan, keluar, pengguna_saat_ini, simpan_login, tujuan_aman, wajib_peran,
+    AksesDitolak, LoginDiperlukan, akun_masih_aktif, keluar, pengguna_saat_ini, simpan_login, tujuan_aman, wajib_peran,
 )
 from app.controllers.kontrol_autentikasi import KontrolAutentikasi
 from app.controllers.kontrol_dashboard import KontrolDashboard, warna_prioritas
@@ -103,6 +103,34 @@ AKSI_ADMIN = wajib_peran(PERAN_ADMIN)
 HANYA_WARGA = wajib_peran(PERAN_WARGA)
 
 
+# Sprint 3 backlog 2: how often a citizen's page asks for new notifications (no Web Push, PRD 5.2).
+POLL_NOTIF_BAWAAN = 15
+BATAS_NOTIF_TERBARU = 5
+
+
+def interval_poll_notif() -> int:
+    """SCMS_POLL_NOTIF_DETIK (default 15 s; tests use a smaller value). Invalid or < 1 -> default."""
+    try:
+        nilai = int(os.getenv("SCMS_POLL_NOTIF_DETIK", POLL_NOTIF_BAWAAN))
+    except ValueError:
+        return POLL_NOTIF_BAWAAN
+    return nilai if nilai >= 1 else POLL_NOTIF_BAWAAN
+
+
+def _notif_langsung(pengguna: Optional[dict]) -> Optional[dict]:
+    """Settings for the polling script on citizen pages: the interval and the unread notifications
+    already on screen, so only notifications that arrive later raise a toast."""
+    if not pengguna or pengguna["peran"] != PERAN_WARGA:
+        return None
+    db = SessionLocal()
+    try:
+        terlihat = [n.id_notifikasi for n in KontrolNotifikasi(db).belum_dibaca_terbaru(pengguna["id"], 50)]
+    finally:
+        db.close()
+    return {"interval_detik": interval_poll_notif(), "terlihat": terlihat,
+            "url": "/api/notifikasi/belum-dibaca"}
+
+
 def _jumlah_notif(pengguna: Optional[dict]) -> int:
     if not pengguna or pengguna["peran"] != PERAN_WARGA:
         return 0
@@ -138,6 +166,7 @@ def render(request: Request, name: str, context: dict, status_code: int = 200):
         "ai_simulasi": get_ai_service().is_simulasi,
         "jumlah_notif": _jumlah_notif(pengguna),
         "jumlah_notif_gagal": _jumlah_notif_gagal(pengguna),
+        "notif_langsung": _notif_langsung(pengguna),
         "flash": request.session.pop("flash", None),
     }
     ctx.update(context)
@@ -670,6 +699,33 @@ def buka_notifikasi(id_notifikasi: str, pengguna: dict = Depends(HANYA_WARGA), d
 def baca_semua_notifikasi(request: Request, pengguna: dict = Depends(HANYA_WARGA), db: Session = Depends(get_db)):
     KontrolNotifikasi(db).tandai_semua_dibaca(pengguna["id"])
     return RedirectResponse(url="/notifikasi", status_code=303)
+
+
+@app.get("/api/notifikasi/belum-dibaca")
+def api_notifikasi_belum_dibaca(request: Request, db: Session = Depends(get_db)):
+    """Sprint 3 backlog 2: unread count and newest unread notifications for the live badge/toast.
+    JSON errors instead of the login redirect, so the polling script never receives an HTML page."""
+    pengguna = pengguna_saat_ini(request)
+    if pengguna and not akun_masih_aktif(pengguna):
+        # 401 without clearing the session: a background poll must never log anyone out on its own
+        # (the next real page load ends the session as usual through wajib_peran()).
+        pengguna = None
+    if not pengguna:
+        return JSONResponse({"detail": "Login diperlukan"}, status_code=401)
+    if pengguna["peran"] != PERAN_WARGA:
+        return JSONResponse({"detail": "Akses ditolak"}, status_code=403)
+    kontrol = KontrolNotifikasi(db)
+    return JSONResponse({
+        "jumlah": kontrol.jumlah_belum_dibaca(pengguna["id"]),
+        "terbaru": [{
+            "id": n.id_notifikasi,
+            "id_laporan": n.id_laporan,
+            "judul": n.judul or "Status laporan diperbarui",
+            "pesan": n.pesan,
+            "waktu": format_wib(n.waktu_kirim),
+            "url": f"/notifikasi/{quote(n.id_notifikasi)}/buka",
+        } for n in kontrol.belum_dibaca_terbaru(pengguna["id"], BATAS_NOTIF_TERBARU)],
+    }, headers={"Cache-Control": "no-store"})
 
 
 # ================= UC-I Sprint 3 BR-8: NOTIFIKASI GAGAL & KIRIM ULANG (STAF) =================

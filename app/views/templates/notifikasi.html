@@ -7,6 +7,9 @@
         <span class="text-[10px] font-extrabold text-[#0B5ED7] uppercase tracking-wider">UC-I • Notifikasi Status Laporan</span>
         <h2 class="text-2xl font-extrabold text-slate-900 tracking-tight">Notifikasi</h2>
         <p class="text-xs text-slate-500 mt-1">{{ jumlah_notif }} belum dibaca. Klik notifikasi untuk membuka progres laporan terkait.</p>
+        <p class="text-[11px] text-slate-500 mt-1">Halaman warga memeriksa kabar baru secara otomatis; tidak perlu memuat ulang.
+            <button type="button" id="aktifkanNotifBrowser" class="hidden ml-1 font-bold text-[#0B5ED7] hover:underline">Aktifkan notifikasi browser</button>
+            <span id="infoNotifBrowser"></span></p>
     </div>
     {% if jumlah_notif %}
     <form method="post" action="/notifikasi/baca-semua">

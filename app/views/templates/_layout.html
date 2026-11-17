@@ -26,7 +26,7 @@
             </a>
             <div class="flex items-center space-x-2 sm:space-x-3 shrink-0">
                 {% if warga %}
-                <a href="/notifikasi" id="menuNotifikasi" class="relative inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-[#0B5ED7] px-2.5 py-1.5 rounded-lg hover:bg-slate-50">
+                <a href="/notifikasi" id="menuNotifikasi" data-kelas-badge="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] font-extrabold flex items-center justify-center" class="relative inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-[#0B5ED7] px-2.5 py-1.5 rounded-lg hover:bg-slate-50">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
                     <span class="hidden sm:inline">Notifikasi</span>
                     {% if jumlah_notif %}<span id="badgeNotif" class="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] font-extrabold flex items-center justify-center">{{ jumlah_notif }}</span>{% endif %}
@@ -83,6 +83,7 @@
     <footer class="bg-white border-t border-slate-200 py-4 px-6 mt-10 text-center text-[11px] text-slate-500">
         &copy; 2026 Dinas Sumber Daya Air dan Bina Marga Kota Surabaya &bull; Kelompok 7 — Kelas I3
     </footer>
+    {% include "_notif_langsung.html" %}
     {% block skrip %}{% endblock %}
 </body>
 </html>

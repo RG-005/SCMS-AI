@@ -1,5 +1,5 @@
 # Sprint 3 — backlog 2: push notification versi sederhana (PRD bagian 5.2, tanpa Web Push/VAPID).
-# BELUM dihubungkan ke step definition (tidak ada scenarios()); ditulis sebelum kode.
+# Dihubungkan ke step definition di tests/step_definitions/test_uc_i_push_notifikasi.py (Sprint 3).
 #
 # Data seed yang dipakai (sudah ada):
 #   - Warga 0812xxxxxxx (USR-01) dengan 1 notifikasi belum dibaca (NTF-SEED-0001, LAP-2026-0001).

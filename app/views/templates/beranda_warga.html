@@ -23,7 +23,7 @@
             </div>
             <div class="flex items-center space-x-3">
                 <a href="/lacak" class="hidden sm:inline-flex items-center text-xs font-semibold text-slate-600 hover:text-[#0B5ED7] px-3 py-1.5 rounded-lg hover:bg-slate-50 transition">Lacak Laporan</a>
-                <a href="/notifikasi" id="menuNotifikasi" class="relative inline-flex items-center gap-1 text-xs font-semibold text-slate-600 hover:text-[#0B5ED7] px-3 py-1.5 rounded-lg hover:bg-slate-50 transition">Notifikasi{% if jumlah_notif %}<span id="badgeNotif" class="ml-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] font-extrabold inline-flex items-center justify-center">{{ jumlah_notif }}</span>{% endif %}</a>
+                <a href="/notifikasi" id="menuNotifikasi" data-kelas-badge="ml-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] font-extrabold inline-flex items-center justify-center" class="relative inline-flex items-center gap-1 text-xs font-semibold text-slate-600 hover:text-[#0B5ED7] px-3 py-1.5 rounded-lg hover:bg-slate-50 transition">Notifikasi{% if jumlah_notif %}<span id="badgeNotif" class="ml-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] font-extrabold inline-flex items-center justify-center">{{ jumlah_notif }}</span>{% endif %}</a>
                 <div class="flex items-center space-x-2.5 pl-2 border-l border-slate-200">
                     <div class="w-8 h-8 rounded-full bg-[#0B5ED7] text-white flex items-center justify-center font-bold text-xs">{{ (pengguna.nama or '?')[:2] | upper }}</div>
                     <div class="hidden sm:block leading-tight">
@@ -100,5 +100,6 @@
     <footer class="bg-white border-t border-slate-200 py-4 px-6 text-center text-[11px] text-slate-500">
         &copy; 2026 Dinas Sumber Daya Air dan Bina Marga / PUPR Pemerintah Kota Surabaya &bull; Kelompok 7
     </footer>
+{% include "_notif_langsung.html" %}
 </body>
 </html>
