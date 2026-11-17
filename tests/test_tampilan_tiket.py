@@ -25,7 +25,7 @@ from app.main import app, templates
 from app.models.entities import Laporan, WorkOrder
 from app.services.ai_service import AIService, VisiYolo
 from database.seed import seed_data
-from test_keamanan_dan_logika import KONFIG_V4, NAMA_V4, _FakeYoloV4, gambar
+from tests.test_keamanan_dan_logika import KONFIG_V4, NAMA_V4, _FakeYoloV4, gambar
 
 WARGA = "0812xxxxxxx"          # USR-01: LAP-2026-0001 (REP-2026-00341), LAP-2026-0003 (REP-2026-00290)
 ADMIN = "admin@dpupr.surabaya.go.id"
