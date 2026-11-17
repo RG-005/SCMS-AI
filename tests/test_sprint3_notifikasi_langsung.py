@@ -76,6 +76,22 @@ def test_akun_dinonaktifkan_401(db_bersih):
     assert c.get(URL).status_code == 401
 
 
+def test_polling_tidak_pernah_mengeluarkan_warga(db_bersih):
+    """A poll that briefly cannot find the account (e.g. while the test database is re-seeded)
+    answers 401 but does not clear the session; only a real page load ends it."""
+    c = klien(WARGA)
+    db = SessionLocal()
+    try:
+        db.query(Warga).filter_by(no_hp=WARGA).one().is_active = False
+        db.commit()
+        assert c.get(URL).status_code == 401
+        db.query(Warga).filter_by(no_hp=WARGA).one().is_active = True
+        db.commit()
+    finally:
+        db.close()
+    assert c.get(URL).status_code == 200  # still logged in
+
+
 # ------------------------------------------------------------- endpoint data
 def test_warga_mendapat_jumlah_dan_notifikasi_terbaru(db_bersih):
     r = klien(WARGA).get(URL)

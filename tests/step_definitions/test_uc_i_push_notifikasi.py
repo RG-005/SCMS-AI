@@ -25,7 +25,11 @@ URL_API = "/api/notifikasi/belum-dibaca"
 
 @pytest.fixture
 def ctx(browser, live_server, login_as):
+    # Leave any citizen page first: its 1-second polling must not run while seed_data() drops
+    # and recreates the tables. Log in again afterwards instead of trusting the cached login.
+    browser.get("about:blank")
     seed_data(verbose=False)
+    login_as.reset()
     return {"browser": browser, "base": live_server, "login_as": login_as, "respons": None}
 
 

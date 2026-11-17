@@ -707,7 +707,8 @@ def api_notifikasi_belum_dibaca(request: Request, db: Session = Depends(get_db))
     JSON errors instead of the login redirect, so the polling script never receives an HTML page."""
     pengguna = pengguna_saat_ini(request)
     if pengguna and not akun_masih_aktif(pengguna):
-        keluar(request)
+        # 401 without clearing the session: a background poll must never log anyone out on its own
+        # (the next real page load ends the session as usual through wajib_peran()).
         pengguna = None
     if not pengguna:
         return JSONResponse({"detail": "Login diperlukan"}, status_code=401)
