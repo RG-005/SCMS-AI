@@ -85,6 +85,34 @@
     {% endfor %}
 </section>
 
+{% if grafik %}
+<!-- Sprint 3 backlog 3: charts. Their numbers come from the same structures as the tables below
+     (see data_grafik()); the JSON is also what the BDD steps read, so they can be tested without a canvas. -->
+<script type="application/json" id="dataGrafikKinerja">{{ grafik | tojson }}</script>
+<section id="grafikKinerja" class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+    {% set daftar_grafik = [
+        ('tren', 'Tren Tiket Masuk vs Selesai per Minggu', 'Jumlah tiket yang diterima dan yang selesai tiap minggu (Senin–Minggu, WIB).'),
+        ('prioritas', 'Distribusi Prioritas', 'Jumlah tiket per tingkat prioritas BR-2 (tiket Ditutup tidak dihitung).'),
+        ('tahap', 'Rata-rata Durasi per Tahap', 'Rata-rata hari di tiap tahap penanganan, sama dengan baris Keseluruhan di tabel durasi.'),
+        ('wilayah', 'Rekap per Wilayah', 'Tiket selesai dan aktif per wilayah rayon.'),
+    ] %}
+    {% for kunci, judul, ket in daftar_grafik %}
+    <figure class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 m-0" data-grafik="{{ judul }}">
+        <figcaption class="mb-3">
+            <h3 class="font-bold text-slate-900 text-sm">{{ judul }}</h3>
+            <p class="text-[11px] text-slate-500">{{ ket }}</p>
+        </figcaption>
+        <div class="relative h-64">
+            <canvas id="grafik_{{ kunci }}" role="img" aria-label="Grafik {{ judul }}"></canvas>
+        </div>
+    </figure>
+    {% endfor %}
+    <p id="grafikTidakTersedia" class="hidden lg:col-span-2 text-xs text-amber-900 bg-amber-50 border border-amber-300 rounded-xl p-3 no-print">
+        Grafik tidak dapat dimuat (pustaka Chart.js tidak terunduh). Angka lengkap tetap tersedia pada tabel di bawah.
+    </p>
+</section>
+{% endif %}
+
 <!-- Durasi rata-rata per tahap -->
 <section class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-6">
     <div class="px-5 py-4 border-b border-slate-200">
@@ -278,5 +306,70 @@
     </div>
     <p class="px-5 py-3 text-[11px] text-slate-500 border-t border-slate-100">Tiket: {% for b in ditutup.tiket %}<span class="font-mono">{{ b.id_work_order }}</span> ({{ b.alasan_tutup }}){{ ', ' if not loop.last else '' }}{% endfor %}</p>
 </section>
+{% endif %}
+{% endblock %}
+
+{% block skrip %}
+{% if grafik %}
+<script src="https://unpkg.com/chart.js@4.4.1/dist/chart.umd.js"></script>
+<script>
+(function () {
+    var data = JSON.parse(document.getElementById('dataGrafikKinerja').textContent);
+    if (typeof Chart === 'undefined') {
+        document.getElementById('grafikTidakTersedia').classList.remove('hidden');
+        return;
+    }
+    var BIRU = '#0B5ED7', HIJAU = '#16A34A', SLATE = '#0F2942', ABU = '#94A3B8';
+    Chart.defaults.font.family = "'Inter', sans-serif";
+    Chart.defaults.font.size = 11;
+    Chart.defaults.color = '#475569';
+    var bilanganBulat = {beginAtZero: true, ticks: {precision: 0}};
+    var dasar = {responsive: true, maintainAspectRatio: false, animation: false,
+                 plugins: {legend: {position: 'bottom', labels: {boxWidth: 12}}}};
+    function gabung(a, b) { return Object.assign({}, a, b); }
+
+    new Chart(document.getElementById('grafik_tren'), {
+        type: 'line',
+        data: {labels: data.tren.label, datasets: [
+            {label: 'Tiket masuk', data: data.tren.masuk, borderColor: BIRU, backgroundColor: BIRU, tension: 0},
+            {label: 'Tiket selesai', data: data.tren.selesai, borderColor: HIJAU, backgroundColor: HIJAU, tension: 0}
+        ]},
+        options: gabung(dasar, {scales: {y: bilanganBulat}})
+    });
+
+    new Chart(document.getElementById('grafik_prioritas'), {
+        type: 'bar',
+        data: {labels: data.prioritas.label, datasets: [
+            {label: 'Jumlah tiket', data: data.prioritas.jumlah, backgroundColor: data.prioritas.warna}
+        ]},
+        options: gabung(dasar, {plugins: {legend: {display: false}}, scales: {y: bilanganBulat}})
+    });
+
+    new Chart(document.getElementById('grafik_tahap'), {
+        type: 'bar',
+        data: {labels: data.tahap.label, datasets: [
+            {label: 'Rata-rata hari', data: data.tahap.hari, backgroundColor: SLATE}
+        ]},
+        options: gabung(dasar, {
+            indexAxis: 'y',
+            plugins: {legend: {display: false}, tooltip: {callbacks: {label: function (c) {
+                var n = data.tahap.jumlah_tiket[c.dataIndex];
+                return c.raw === null ? 'Belum ada tiket yang melewati tahap ini'
+                                      : c.raw + ' hari (' + n + ' tiket)';
+            }}}},
+            scales: {x: {beginAtZero: true, title: {display: true, text: 'hari'}}}
+        })
+    });
+
+    new Chart(document.getElementById('grafik_wilayah'), {
+        type: 'bar',
+        data: {labels: data.wilayah.label, datasets: [
+            {label: 'Selesai', data: data.wilayah.selesai, backgroundColor: HIJAU},
+            {label: 'Aktif', data: data.wilayah.aktif, backgroundColor: ABU}
+        ]},
+        options: gabung(dasar, {scales: {x: {stacked: true}, y: gabung(bilanganBulat, {stacked: true})}})
+    });
+})();
+</script>
 {% endif %}
 {% endblock %}

@@ -339,3 +339,72 @@ def test_csv_tidak_bisa_menjalankan_formula_dari_input_warga(db_bersih):
 ])
 def test_aman_untuk_spreadsheet(nilai, hasil):
     assert aman_untuk_spreadsheet(nilai) == hasil
+
+
+# ------------------------------------------------- Sprint 3 backlog 3: grafik
+def test_data_grafik_sama_dengan_tabel(db_bersih):
+    data = rekap(tanggal_mulai="2026-10-01", tanggal_akhir="2026-10-31")
+    g = data["grafik"]
+    assert g["prioritas"]["label"] == ["Urgent", "Tinggi", "Borderline", "Rendah"]
+    assert g["prioritas"]["jumlah"] == [r["total"] for r in data["per_prioritas"]] == [2, 2, 1, 0]
+    assert g["prioritas"]["warna"][0] == "#DC2626"
+    assert g["wilayah"]["label"] == [r["nama_wilayah"] for r in data["per_wilayah"]]
+    assert g["wilayah"]["total"] == [r["total"] for r in data["per_wilayah"]]
+    assert [s + a for s, a in zip(g["wilayah"]["selesai"], g["wilayah"]["aktif"])] == g["wilayah"]["total"]
+    assert g["tahap"]["hari"] == [data["total"]["rata_tahap"][kode] for kode, _ in data["tahap"]]
+    assert sum(g["tren"]["masuk"]) == data["total"]["total"] == 5
+    assert sum(g["tren"]["selesai"]) == data["total"]["selesai"] == 1
+
+
+def test_tren_mingguan_per_minggu_senin_wib_tanpa_celah(db_bersih):
+    tren = rekap(tanggal_mulai="2026-10-01", tanggal_akhir="2026-10-31")["grafik"]["tren"]
+    # Seed (WIB): received 5 Oct, 18 Oct (a Sunday, so the week of Mon 12 Oct), 19, 20 and 22 Oct;
+    # REP-2026-00290 completed 10 Oct.
+    assert tren["label"] == ["05/10–11/10", "12/10–18/10", "19/10–25/10"]
+    assert tren["masuk"] == [1, 1, 3]
+    assert tren["selesai"] == [1, 0, 0]
+
+
+def test_tren_mingguan_minggu_kosong_tetap_ada():
+    from app.controllers.kontrol_laporan_kinerja import tren_mingguan
+    b = [{"mulai": wib(1, 9), "status": "Selesai", "selesai": wib(20, 9)}]
+    tren = tren_mingguan(b)
+    assert len(tren["label"]) == 4  # weeks of 28 Sep, 5, 12, 19 Oct
+    assert tren["masuk"] == [1, 0, 0, 0] and tren["selesai"] == [0, 0, 0, 1]
+    assert tren_mingguan([]) == {"label": [], "masuk": [], "selesai": []}
+
+
+def test_grafik_mengikuti_filter_wilayah(db_bersih):
+    g = rekap(tanggal_mulai="2026-10-01", tanggal_akhir="2026-10-31", wilayah="WIL-02")["grafik"]
+    assert g["wilayah"]["label"] == ["Wilayah Benowo"] and g["wilayah"]["total"] == [1]
+    assert dict(zip(g["prioritas"]["label"], g["prioritas"]["jumlah"]))["Tinggi"] == 1
+
+
+def test_periode_kosong_tanpa_grafik(db_bersih):
+    assert rekap(tanggal_mulai="2025-01-01", tanggal_akhir="2025-01-31")["grafik"] is None
+    html = klien(KABID).get("/laporan-kinerja?tanggal_mulai=2025-01-01&tanggal_akhir=2025-01-31").text
+    assert "dataGrafikKinerja" not in html and "<canvas" not in html and "chart.js@" not in html
+
+
+def test_halaman_memuat_grafik_dan_data_json(db_bersih):
+    html = klien(KABID).get("/laporan-kinerja?tanggal_mulai=2026-10-01&tanggal_akhir=2026-10-31").text
+    assert 'id="dataGrafikKinerja"' in html and html.count("<canvas") == 4
+    for judul in ("Tren Tiket Masuk vs Selesai per Minggu", "Distribusi Prioritas",
+                  "Rata-rata Durasi per Tahap", "Rekap per Wilayah"):
+        assert f'data-grafik="{judul}"' in html
+
+
+def test_tiket_ditutup_tidak_masuk_grafik(db_bersih):
+    from app.controllers.kontrol_verifikasi import KontrolVerifikasi
+    ubah_wo("REP-2026-00341", status_work_order="Dilaporkan")
+    db = SessionLocal()
+    try:
+        assert KontrolVerifikasi(db).tolak_tiket("REP-2026-00341", "Laporan tidak valid", ADMIN)["success"]
+    finally:
+        db.close()
+    data = rekap(tanggal_mulai="2026-10-01", tanggal_akhir="2026-10-31")
+    g = data["grafik"]
+    assert dict(zip(g["prioritas"]["label"], g["prioritas"]["jumlah"])) == {
+        "Urgent": 1, "Tinggi": 2, "Borderline": 1, "Rendah": 0}
+    assert sum(g["tren"]["masuk"]) == 4 and sum(g["tren"]["selesai"]) == 1
+    assert data["total"]["tingkat_penyelesaian"] == 25.0

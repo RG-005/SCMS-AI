@@ -31,6 +31,7 @@ from typing import Iterable, Optional
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.controllers.kontrol_dashboard import warna_prioritas
 from app.models.entities import Laporan, Rating, RiwayatStatus, Wilayah, WorkOrder
 from app.services.alur_status import (
     ALASAN_TUTUP, DALAM_PROSES, DILAPORKAN, DISETUJUI, DITUGASKAN, DITUTUP, MENUNGGU_INSPEKSI, MENUNGGU_PENUGASAN,
@@ -126,6 +127,58 @@ def durasi_tahap(waktu_status: dict) -> dict:
         return min(ada) if ada else None
 
     return {kode: _hari(pertama(awal), pertama(akhir)) for kode, _, awal, akhir in TAHAP}
+
+
+def _senin(tanggal: date) -> date:
+    return tanggal - timedelta(days=tanggal.weekday())
+
+
+def tren_mingguan(baris: list) -> dict:
+    """Tickets received vs completed per week (Monday-Sunday, WIB) for the tickets in the recap.
+
+    A ticket counts as received in the week it was first recorded and as completed in the week it
+    reached Selesai, so the totals equal the recap's "Total Tiket" and "Selesai". Weeks without any
+    ticket in between are kept (as 0) so the time axis has no gaps."""
+    masuk: dict = {}
+    selesai: dict = {}
+    for b in baris:
+        if b["mulai"] is not None:
+            minggu = _senin(b["mulai"].astimezone(WIB).date())
+            masuk[minggu] = masuk.get(minggu, 0) + 1
+        if b["status"] == SELESAI and b["selesai"] is not None:
+            minggu = _senin(b["selesai"].astimezone(WIB).date())
+            selesai[minggu] = selesai.get(minggu, 0) + 1
+    semua = set(masuk) | set(selesai)
+    if not semua:
+        return {"label": [], "masuk": [], "selesai": []}
+    minggu, akhir, label = min(semua), max(semua), []
+    daftar = []
+    while minggu <= akhir:
+        daftar.append(minggu)
+        minggu += timedelta(days=7)
+    for m in daftar:
+        label.append(f"{m.strftime('%d/%m')}–{(m + timedelta(days=6)).strftime('%d/%m')}")
+    return {"label": label, "masuk": [masuk.get(m, 0) for m in daftar], "selesai": [selesai.get(m, 0) for m in daftar]}
+
+
+def data_grafik(baris: list, per_wilayah: list, per_prioritas: list, total: dict) -> dict:
+    """Numbers for the four Laporan Kinerja charts (Sprint 3 backlog 3).
+
+    Everything except the weekly trend is copied from the structures the tables are rendered
+    from, so a chart can never disagree with its table. Closed tickets are not in `baris`
+    (PRD 5.3 BR-4), so they are left out of the charts just like the totals."""
+    return {
+        "tren": tren_mingguan(baris),
+        "prioritas": {"label": [r["prioritas"] for r in per_prioritas], "jumlah": [r["total"] for r in per_prioritas],
+                      "warna": [warna_prioritas(r["prioritas"]) for r in per_prioritas]},
+        "tahap": {"label": [label for _, label, _, _ in TAHAP],
+                  "hari": [total["rata_tahap"][kode] for kode, _, _, _ in TAHAP],
+                  "jumlah_tiket": [total["jumlah_tahap"][kode] for kode, _, _, _ in TAHAP]},
+        "wilayah": {"label": [r["nama_wilayah"] for r in per_wilayah],
+                    "selesai": [r["selesai"] for r in per_wilayah],
+                    "aktif": [r["aktif"] for r in per_wilayah],
+                    "total": [r["total"] for r in per_wilayah]},
+    }
 
 
 class KontrolLaporanKinerja:
@@ -253,7 +306,7 @@ class KontrolLaporanKinerja:
         hasil = {"success": True, "message": None, "filter": filter_, "daftar_wilayah": daftar_wilayah,
                  "tahap": [(kode, label) for kode, label, _, _ in TAHAP],
                  "tiket": [], "tiket_aktif": [], "per_wilayah": [], "per_prioritas": [],
-                 "total": self._ringkas([]), "ditutup": self._ringkas_ditutup([]),
+                 "total": self._ringkas([]), "ditutup": self._ringkas_ditutup([]), "grafik": None,
                  "dibuat_pada": _format_wib(sekarang)}
 
         try:
@@ -315,8 +368,10 @@ class KontrolLaporanKinerja:
         tiket_aktif = sorted((b for b in baris if b["status"] != SELESAI),
                              key=lambda b: (b["_umur_mentah"] is None, -(b["_umur_mentah"] or 0), b["id_work_order"]))
 
+        total = {**self._ringkas(baris), "jumlah_ditutup": len(ditutup)}
         return {**hasil, "tiket": baris, "tiket_aktif": tiket_aktif, "per_wilayah": per_wilayah,
-                "per_prioritas": per_prioritas, "total": {**self._ringkas(baris), "jumlah_ditutup": len(ditutup)}}
+                "per_prioritas": per_prioritas, "total": total,
+                "grafik": data_grafik(baris, per_wilayah, per_prioritas, total) if baris else None}
 
     @staticmethod
     def _ringkas_ditutup(ditutup: list) -> dict:
