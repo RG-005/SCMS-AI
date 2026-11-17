@@ -1,5 +1,5 @@
 # Sprint 3 — backlog 3: grafik Laporan Kinerja dengan Chart.js (PRD bagian 5.2).
-# BELUM dihubungkan ke step definition (tidak ada scenarios()); ditulis sebelum kode.
+# Dihubungkan ke step definition di tests/step_definitions/test_uc_l.py (Sprint 3).
 #
 # Data seed yang dipakai (sudah ada), periode 2026-10-01 s.d. 2026-10-31:
 #   - 5 tiket: Wilayah Gubeng 4 (REP-2026-00341, -00355, -00298, -00290), Wilayah Benowo 1 (REP-2026-00360).
