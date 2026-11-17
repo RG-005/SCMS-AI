@@ -2,8 +2,9 @@
 
 cucumber.json dihasilkan pytest-bdd:
     python -m pytest tests/step_definitions --cucumberjson=reports/cucumber.json ...
-Fitur dikelompokkan per sprint berdasarkan kode use case di nama berkas
-`tests/features/uc_<kode>_*.feature`.
+Fitur dikelompokkan per sprint: fitur bertag `@sprint3` masuk Sprint 3 (fitur Sprint 3 memakai
+kode use case yang sama dengan sprint sebelumnya, mis. uc_a_tinjauan_manual), fitur lain menurut
+kode use case di nama berkas `tests/features/uc_<kode>_*.feature`.
 """
 import json
 import os
@@ -16,25 +17,39 @@ os.makedirs("reports", exist_ok=True)
 SPRINT_UC = {
     "Sprint 1": ["K", "A", "B", "G", "H"],
     "Sprint 2": ["C", "D", "E", "F", "I", "J", "L"],
+    # Sprint 3 is chosen by the @sprint3 tag; this list is only the order and the header text.
+    "Sprint 3": ["A", "B", "E", "F", "I", "L", "Integrasi"],
 }
+TAG_SPRINT = {"sprint3": "Sprint 3"}
 
 
 def kode_uc(feat):
-    """'features/uc_k_login.feature' -> 'K' (None bila pola tidak cocok)."""
-    m = re.search(r"uc_([a-z])_", feat.get("uri", "").replace("\\", "/").lower())
-    return m.group(1).upper() if m else None
+    """'features/uc_k_login.feature' -> 'K'; 'features/integrasi_*.feature' -> 'Integrasi'; else None."""
+    uri = feat.get("uri", "").replace("\\", "/").lower()
+    m = re.search(r"uc_([a-z])_", uri)
+    if m:
+        return m.group(1).upper()
+    return "Integrasi" if "/integrasi_" in uri or uri.startswith("integrasi_") else None
 
 
-def sprint_dari(kode):
+def tag_fitur(feat):
+    return {str(t.get("name", "")).lstrip("@").lower() for t in feat.get("tags", []) or []}
+
+
+def sprint_dari(feat):
+    for tag, sprint in TAG_SPRINT.items():
+        if tag in tag_fitur(feat):
+            return sprint
+    kode = kode_uc(feat)
     for sprint, daftar in SPRINT_UC.items():
-        if kode in daftar:
+        if sprint not in TAG_SPRINT.values() and kode in daftar:
             return sprint
     return "Lainnya"
 
 
 def urutan_fitur(feat):
     kode = kode_uc(feat)
-    sprint = sprint_dari(kode)
+    sprint = sprint_dari(feat)
     daftar_sprint = list(SPRINT_UC) + ["Lainnya"]
     kode_sprint = SPRINT_UC.get(sprint, [])
     posisi = kode_sprint.index(kode) if kode in kode_sprint else 99
@@ -83,7 +98,7 @@ def build_cucumber_html(json_path="reports/cucumber.json", out_path="reports/cuc
 
     per_sprint = {}
     for feat in features:
-        per_sprint.setdefault(sprint_dari(kode_uc(feat)), []).append(feat)
+        per_sprint.setdefault(sprint_dari(feat), []).append(feat)
 
     now_str = datetime.now().strftime("%d %B %Y, %H:%M:%S WIB")
 
@@ -141,7 +156,7 @@ def build_cucumber_html(json_path="reports/cucumber.json", out_path="reports/cuc
 """
     for sprint, daftar in per_sprint.items():
         r = ringkas(daftar)
-        kode = ", ".join("UC-" + k for k in (SPRINT_UC.get(sprint) or []))
+        kode = ", ".join(("UC-" + k if len(k) == 1 else k) for k in (SPRINT_UC.get(sprint) or []))
         warna = "text-emerald-400" if r["skenario_lulus"] == r["skenario"] else "text-red-400"
         html += f"""
             <div class="bg-slate-800 border border-slate-700 rounded-xl p-4" data-sprint="{sprint}">
@@ -162,7 +177,7 @@ def build_cucumber_html(json_path="reports/cucumber.json", out_path="reports/cuc
 
     sprint_sebelumnya = None
     for feat in features:
-        sprint = sprint_dari(kode_uc(feat))
+        sprint = sprint_dari(feat)
         if sprint != sprint_sebelumnya:
             r = ringkas(per_sprint[sprint])
             html += f"""

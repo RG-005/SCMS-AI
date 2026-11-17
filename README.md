@@ -81,7 +81,7 @@ Rincian lengkap ada di [PRD bagian 5](prd.md#5-sprint-3--rencana): tujuan, backl
 | ⚠️ Carry-over Sprint 2: hitung ulang risk score, temuan baru, kunjungan lanjutan, foto tanpa deteksi AI | Alfarrel / Alfarrel / Rizaldi / keduanya | `uc_e_hitung_ulang_risiko`, `uc_e_temuan_baru`, `uc_f_kunjungan_lanjutan`, `uc_a_tinjauan_manual` |
 | Integrasi & Pengujian BDD Seluruh Fitur | keduanya | semua feature di atas |
 
-Total **33 skenario** di 8 file bertag `@sprint3`. Feature ditulis sebelum kode dan dihubungkan ke step definition per bagian. **Terimplementasi:**
+Total **35 skenario** di 9 file bertag `@sprint3` (33 skenario fitur + 2 skenario integrasi). Feature ditulis sebelum kode dan dihubungkan ke step definition per bagian. **Terimplementasi:**
 * Bagian 1A — hitung ulang Risk Score setelah inspeksi (`uc_e_hitung_ulang_risiko` + 21 uji cepat di `tests/test_sprint3_risiko.py`); form inspeksi mewajibkan konfirmasi kategori dan tingkat kerusakan lapangan.
 * Bagian 1B — status akhir **`Ditutup`** dengan alasan wajib (tombol **Tolak** di Verifikasi; **Rekomendasikan Tutup** oleh penilik lalu **Konfirmasi Tutup Tiket** / **Tolak Rekomendasi** oleh Admin, SPK ditahan selama tertunda) dan **tinjauan manual** (AI tidak pernah menolak foto valid): `uc_b_tutup_tiket`, `uc_a_tinjauan_manual`, Scenario Outline rekomendasi tutup, skenario UC-A yang direvisi, + 53 uji cepat di `tests/test_sprint3_tutup.py`. Label tinjauan manual hanya hilang bila laporan terdeteksi AI digabung selama tiket masih `Dilaporkan` (keputusan tim 5.9 no. 10).
 * Bagian 2A — **temuan baru** oleh Penilik Jalan (`uc_e_temuan_baru`, + 31 uji cepat di `tests/test_sprint3_temuan.py`): form "Catat Temuan Baru" di Tugas Lapangan (foto, kategori, deskripsi, titik peta) memakai alur laporan warga yang sama (BR-1/BR-2/BR-3); tiket baru bersumber "Temuan Penilik" tanpa warga pelapor dan tanpa notifikasi warga. `laporan.id_warga` kini boleh kosong (migrasi otomatis: PostgreSQL `DROP NOT NULL`, SQLite bangun ulang tabel tanpa kehilangan data).
@@ -89,6 +89,7 @@ Total **33 skenario** di 8 file bertag `@sprint3`. Feature ditulis sebelum kode 
 * Bagian 3 — **status pengiriman & Kirim Ulang notifikasi (BR-8)** (`uc_i_kirim_ulang_notifikasi`, + 36 uji cepat di `tests/test_sprint3_notifikasi.py`): setiap notifikasi mencatat `status_kirim` (`Menunggu`/`Terkirim`/`Gagal`) pada kanal luar tersimulasi, 1 pengiriman awal + maks. 3 percobaan ulang otomatis (`jumlah_percobaan`, `waktu_percobaan_terakhir`). Halaman **Notifikasi Gagal** (`/notifikasi-gagal`, Admin & Kabid, badge jumlah di navigasi staf); tombol **Kirim Ulang** hanya Admin. Kegagalan kirim tidak membatalkan perubahan status, dan notifikasi in-app tetap tampil di `/notifikasi` warga.
 * Bagian 4 — **grafik Laporan Kinerja** (`uc_l_grafik_kinerja`, step di `tests/step_definitions/test_uc_l.py`, + 7 uji cepat di `tests/test_laporan_kinerja.py`): empat grafik Chart.js 4.4.1 di `/laporan-kinerja` (tren tiket masuk vs selesai per minggu Senin–Minggu WIB, distribusi prioritas, rata-rata durasi per tahap, rekap selesai/aktif per wilayah). Angka grafik dibuat oleh `data_grafik()` dari struktur yang sama dengan tabel dan ditaruh di `#dataGrafikKinerja` (JSON) sehingga bisa diuji tanpa canvas. Mengikuti filter periode/wilayah; tiket `Ditutup` tidak masuk grafik; periode kosong tanpa grafik. Bila Chart.js gagal dimuat, muncul pesan dan tabel tetap lengkap.
 * Bagian 5 — **notifikasi tanpa refresh** (`uc_i_push_notifikasi`, step di `tests/step_definitions/test_uc_i_push_notifikasi.py`, + 30 uji cepat di `tests/test_sprint3_notifikasi_langsung.py`): halaman warga (Beranda, Buat Laporan, Lacak, Notifikasi) memanggil `GET /api/notifikasi/belum-dibaca` setiap `SCMS_POLL_NOTIF_DETIK` detik (bawaan 15; tes memakai 1). Badge `#badgeNotif` diperbarui tanpa memuat ulang, notifikasi yang belum tampil memunculkan toast `#toastNotif`, dan bila warga mengizinkan, notifikasi browser (Notification API) berjudul "Status laporan <ID> diperbarui". Izin ditolak atau browser tanpa API: toast saja, tanpa galat. Endpoint hanya untuk Warga (tanpa login 401 tanpa data, staf 403). Tombol "Aktifkan notifikasi browser" ada di halaman Notifikasi. Tanpa Web Push/VAPID/service worker.
+* Bagian 6 — **integrasi seluruh fitur** (`integrasi_alur_penuh`, step di `tests/step_definitions/test_integrasi_alur_penuh.py`): satu tiket dibawa melewati semua aktor dan status lewat rute web sungguhan (login per aktor, form POST, halaman dan endpoint JSON), tanpa menyiapkan status di database. Jalur perbaikan: laporan warga → Disetujui → Ditugaskan → inspeksi (Risk Score dihitung ulang) → SPK → Selesai → rating, dengan pemeriksaan linimasa, satu notifikasi per perubahan status, status kirim, dan Laporan Kinerja (grafik + tabel). Jalur tolak: laporan → Tolak (`Ditutup`) dengan alasan di notifikasi, rating ditolak, dan tiket tampil terpisah di Laporan Kinerja tanpa grafik. `generate_bdd_report.py` kini mengelompokkan fitur bertag `@sprint3` sebagai Sprint 3.
 
 Skenario lain belum dihubungkan dan belum ikut dijalankan `pytest`.
 
@@ -152,8 +153,8 @@ scms-ai-pupr/
 ├── reports/                         # Laporan pengujian (lihat "Membuat Laporan Pengujian")
 │   ├── cucumber.json                # Hasil BDD format Cucumber (pytest-bdd --cucumberjson)
 │   ├── cucumber_bdd_report.html     # Laporan BDD per sprint (dibuat generate_bdd_report.py)
-│   ├── selenium_e2e_report.html     # pytest-html: 31 skenario BDD + 3 E2E Selenium
-│   └── dokumentasi_testing_scms.html # pytest-html: seluruh 350 tes
+│   ├── selenium_e2e_report.html     # pytest-html: 67 skenario BDD + 3 E2E Selenium
+│   └── dokumentasi_testing_scms.html # pytest-html: seluruh 596 tes
 ├── generate_bdd_report.py           # Pembuat cucumber_bdd_report.html dari cucumber.json
 ├── pytest.ini                       # Konfigurasi pytest runner
 ├── requirements.txt                 # Daftar dependensi paket Python
@@ -201,7 +202,7 @@ python -m database.seed --force    # PostgreSQL: hanya jika memang ingin mereset
 ### 6. Jalankan Pengujian Otomatis
 Pengujian **selalu** memakai database terpisah `scms_test.db`, sehingga database di `.env` tidak tersentuh.
 ```bash
-pytest -v                                      # semua 594 tes: 65 BDD + 3 E2E Selenium + 526 uji cepat (butuh Chrome/Edge)
+pytest -v                                      # semua 596 tes: 67 BDD + 3 E2E Selenium + 526 uji cepat (butuh Chrome/Edge)
 pytest tests/test_keamanan_dan_logika.py tests/test_sprint2.py tests/test_laporan_kinerja.py tests/test_audit_sprint2.py tests/test_tanpa_sla.py tests/test_tampilan_tiket.py tests/test_sprint3_risiko.py tests/test_sprint3_tutup.py tests/test_sprint3_temuan.py tests/test_sprint3_kunjungan.py tests/test_sprint3_notifikasi.py tests/test_sprint3_notifikasi_langsung.py -v   # uji cepat saja, tanpa browser
 HEADLESS=1 pytest -v                           # browser tanpa jendela
 ```
@@ -209,13 +210,13 @@ HEADLESS=1 pytest -v                           # browser tanpa jendela
 ### Membuat Laporan Pengujian
 Keempat berkas di `reports/` dibuat ulang dengan tiga perintah berikut (butuh `pytest-html`, sudah ada di `requirements.txt`). Jalankan dari folder proyek dengan venv aktif. Perintah 1 harus dijalankan sebelum perintah 3, karena perintah 3 membaca `reports/cucumber.json`.
 ```bash
-# 1. BDD (31 skenario) + 3 E2E Selenium -> reports/cucumber.json + reports/selenium_e2e_report.html
+# 1. BDD (67 skenario) + 3 E2E Selenium -> reports/cucumber.json + reports/selenium_e2e_report.html
 HEADLESS=1 python -m pytest tests/step_definitions --cucumberjson=reports/cucumber.json --html=reports/selenium_e2e_report.html --self-contained-html
 
-# 2. Seluruh 350 tes -> reports/dokumentasi_testing_scms.html
+# 2. Seluruh 596 tes -> reports/dokumentasi_testing_scms.html
 HEADLESS=1 python -m pytest --html=reports/dokumentasi_testing_scms.html --self-contained-html
 
-# 3. reports/cucumber.json -> reports/cucumber_bdd_report.html (dikelompokkan Sprint 1 / Sprint 2)
+# 3. reports/cucumber.json -> reports/cucumber_bdd_report.html (dikelompokkan Sprint 1 / Sprint 2 / Sprint 3)
 python generate_bdd_report.py
 ```
 Di PowerShell, ganti awalan `HEADLESS=1 ` dengan `$env:HEADLESS = "1";` sebelum perintah. Hapus `HEADLESS=1` bila ingin melihat jendela browser. Pengelompokan sprint diatur di `SPRINT_UC` pada `generate_bdd_report.py` (Sprint 1: UC-K, A, B, G, H; Sprint 2: UC-C, D, E, F, I, J, L).
