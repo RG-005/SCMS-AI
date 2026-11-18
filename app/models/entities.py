@@ -288,10 +288,11 @@ class Notifikasi(Base):
     judul = Column(String(100), nullable=True)
     pesan = Column(Text, nullable=False)
     status_baca = Column(Boolean, default=False)
-    # Sprint 3 BR-8: delivery on the simulated outside channel (Menunggu / Terkirim / Gagal);
-    # the in-app notification is shown whatever this says. See app/services/pengiriman_notifikasi.py.
-    status_kirim = Column(String(20), default="Terkirim")
     waktu_kirim = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    # DEPRECATED: the "Notifikasi Gagal" / "Kirim Ulang" feature (old BR-8) was removed by the team.
+    # The app no longer writes or reads these columns; they are kept only so existing databases
+    # need no risky migration (jumlah_percobaan is NOT NULL, so its default stays).
+    status_kirim = Column(String(20), default="Terkirim")
     jumlah_percobaan = Column(Integer, default=0, nullable=False)
     waktu_percobaan_terakhir = Column(DateTime, nullable=True)
 

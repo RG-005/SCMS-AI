@@ -226,11 +226,13 @@ def satu_notifikasi_per_perubahan(ctx):
     assert judul == harapan, judul
 
 
-@then("every notification was delivered")
-def semua_terkirim(ctx):
-    status = _db(lambda db: {n.status_kirim for n in db.query(Notifikasi).filter_by(id_laporan=ctx["id_laporan"])})
-    assert status == {"Terkirim"}
-    assert ctx["id_laporan"] not in _aktor(ctx, ADMIN).get("/notifikasi-gagal").text
+@then("every notification is listed on the citizen's notification page")
+def semua_tampil_di_halaman_notifikasi(ctx):
+    ids = _db(lambda db: [n.id_notifikasi for n in db.query(Notifikasi).filter_by(id_laporan=ctx["id_laporan"])])
+    halaman = _aktor(ctx, ctx["warga"]).get("/notifikasi")
+    assert halaman.status_code == 200
+    hilang = [i for i in ids if f'id="notif-{i}"' not in halaman.text]
+    assert ids and not hilang, hilang
 
 
 @then("the rating is saved and the report can no longer be rated")

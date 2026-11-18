@@ -60,9 +60,6 @@
                 {{ tab('/work-orders', 'Penugasan & Work Order (SPK)', 'work-orders', aktif) }}
                 {% if peran in ['Admin', 'Kepala Bidang'] %}{{ tab('/master-data', 'Data Master', 'master', aktif) }}{% endif %}
                 {% if peran in ['Admin', 'Kepala Bidang'] %}{{ tab('/laporan-kinerja', 'Laporan Kinerja', 'kinerja', aktif) }}{% endif %}
-                {% if peran in ['Admin', 'Kepala Bidang'] %}
-                <a href="/notifikasi-gagal" id="menuNotifikasiGagal" class="py-3 whitespace-nowrap border-b-2 inline-flex items-center {{ 'text-[#0B5ED7] border-[#0B5ED7] font-bold' if aktif == 'notif-gagal' else 'text-slate-500 hover:text-slate-800 border-transparent' }}">Notifikasi Gagal{% if jumlah_notif_gagal %}<span id="badgeNotifGagal" class="ml-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] font-extrabold inline-flex items-center justify-center">{{ jumlah_notif_gagal }}</span>{% endif %}</a>
-                {% endif %}
             {% endif %}
         </nav>
     </header>

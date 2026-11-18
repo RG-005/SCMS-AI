@@ -68,7 +68,7 @@ def pastikan_kolom_terbaru(eng=None):
                 conn.execute(text("UPDATE work_order SET severity_ai = severity_score_kasus "
                                   "WHERE severity_ai IS NULL"))
         if insp.has_table("notifikasi"):
-            # Sprint 3 BR-8: rows written before delivery tracking have no attempt count yet
+            # Deprecated column (old BR-8), still NOT NULL in the model: old rows get 0
             conn.execute(text("UPDATE notifikasi SET jumlah_percobaan = 0 WHERE jumlah_percobaan IS NULL"))
         if insp.has_table("laporan"):
             # Sprint 3: every report written before inspector findings existed came from a citizen

@@ -276,19 +276,15 @@ def seed_data(force: bool = False, verbose: bool = True):
         Notifikasi(id_notifikasi="NTF-SEED-0001", id_laporan="LAP-2026-0001", id_warga="USR-01",
                    judul="Laporan diverifikasi",
                    pesan="Laporan Anda telah diverifikasi dan disetujui oleh Dinas PUPR. (Laporan LAP-2026-0001, tiket REP-2026-00341)",
-                   status_baca=False, waktu_kirim=jam(20, 13),
-                   status_kirim="Terkirim", jumlah_percobaan=1, waktu_percobaan_terakhir=jam(20, 13)),
+                   status_baca=False, waktu_kirim=jam(20, 13)),
         Notifikasi(id_notifikasi="NTF-SEED-0002", id_laporan="LAP-2026-0003", id_warga="USR-01",
                    judul="Perbaikan selesai",
                    pesan="Perbaikan jalan pada laporan Anda telah selesai. (Laporan LAP-2026-0003, tiket REP-2026-00290)",
-                   status_baca=True, waktu_kirim=jam(10, 15),
-                   status_kirim="Terkirim", jumlah_percobaan=1, waktu_percobaan_terakhir=jam(10, 15)),
-        # Sprint 3 BR-8 demo: outside delivery failed after 1 send + 3 retries (shown on /notifikasi-gagal)
+                   status_baca=True, waktu_kirim=jam(10, 15)),
         Notifikasi(id_notifikasi="NTF-SEED-0003", id_laporan="LAP-2026-0002", id_warga="USR-03",
                    judul="Laporan diverifikasi",
                    pesan="Laporan Anda telah diverifikasi dan disetujui oleh Dinas PUPR. (Laporan LAP-2026-0002, tiket REP-2026-00298)",
-                   status_baca=True, waktu_kirim=jam(18, 11),
-                   status_kirim="Gagal", jumlah_percobaan=4, waktu_percobaan_terakhir=jam(18, 11)),
+                   status_baca=True, waktu_kirim=jam(18, 11)),
     ])
 
     db.commit()

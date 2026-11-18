@@ -31,7 +31,7 @@ Feature: Sprint 3 Integration - Full Ticket Lifecycle Across All Actors
     Then the ticket status is "Selesai"
     And the citizen's timeline shows every stage as done
     And the citizen received exactly one notification for each status change
-    And every notification was delivered
+    And every notification is listed on the citizen's notification page
     When the citizen rates the repair 5 stars with review "Cepat dan rapi"
     Then the rating is saved and the report can no longer be rated
     And the performance report for today counts 1 incoming and 1 completed ticket in its charts and tables

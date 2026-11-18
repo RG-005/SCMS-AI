@@ -21,7 +21,6 @@ from sqlalchemy.orm import Session
 
 from app.models.entities import Laporan, Notifikasi, RiwayatStatus, WorkOrder
 from app.services.penyimpanan import id_acak
-from app.services.pengiriman_notifikasi import KIRIM_MENUNGGU, jalankan_siklus_kirim
 
 DILAPORKAN = "Dilaporkan"
 DISETUJUI = "Disetujui"
@@ -132,10 +131,8 @@ def catat_riwayat(db: Session, wo: WorkOrder, status: str, keterangan: str = "",
 
 
 def kirim_notifikasi(db: Session, laporan: Laporan, judul: str, pesan: str) -> Optional[Notifikasi]:
-    """In-app notification to the citizen who sent `laporan`, then one delivery cycle on the
-    simulated outside channel (BR-8: 1 send + max 3 retries; never raises, so a failed delivery
-    never undoes the status change). An inspector's finding has no citizen (team decision 5.9
-    no. 3), so nobody is notified for it."""
+    """In-app notification to the citizen who sent `laporan`. An inspector's finding has no
+    citizen (team decision 5.9 no. 3), so nobody is notified for it."""
     if laporan.id_warga is None:
         return None
     notif = Notifikasi(
@@ -145,11 +142,8 @@ def kirim_notifikasi(db: Session, laporan: Laporan, judul: str, pesan: str) -> O
         judul=judul,
         pesan=f"{pesan} (Laporan {laporan.id_laporan}, tiket {laporan.id_work_order})",
         status_baca=False,
-        status_kirim=KIRIM_MENUNGGU,
-        jumlah_percobaan=0,
     )
     db.add(notif)
-    jalankan_siklus_kirim(notif)
     return notif
 
 
