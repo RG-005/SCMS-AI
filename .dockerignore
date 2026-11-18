@@ -21,3 +21,9 @@ models/
 reports/
 tests/reports/
 docs/
+
+# Tailwind build tooling: the image only needs the built app/static/css/tailwind.css
+node_modules/
+package.json
+package-lock.json
+tailwind.config.js
