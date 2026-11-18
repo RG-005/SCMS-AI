@@ -16,3 +16,6 @@ models/
 
 # Konfigurasi Docker (berisi password)
 .env.docker
+
+# Tailwind build tooling (npm run build:css)
+node_modules/

@@ -2,7 +2,7 @@
 # SCMS-AI: Smart Complaint Management System — Dinas PUPR Kota Surabaya
 
 **Versi Dokumen:** 2.0 (Sprint 1 & Sprint 2 Integrated)  
-**CSS Framework:** Tailwind CSS (Utility-First)  
+**CSS Framework:** Tailwind CSS 3.4 (Utility-First), di-build lokal ke `app/static/css/tailwind.css` dengan `npm run build:css` (tanpa CDN)  
 **Font Family:** `Inter`, sans-serif (Google Fonts)  
 **Peta Geospasial:** Leaflet.js `1.9.4` + OpenStreetMap + Nominatim Geocoding API  
 

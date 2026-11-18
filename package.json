@@ -1,0 +1,12 @@
+{
+  "name": "scms-ai-css",
+  "private": true,
+  "description": "Builds app/static/css/tailwind.css from the templates (no Tailwind CDN at runtime).",
+  "scripts": {
+    "build:css": "tailwindcss -c tailwind.config.js -i app/static/css/input.css -o app/static/css/tailwind.css --minify",
+    "watch:css": "tailwindcss -c tailwind.config.js -i app/static/css/input.css -o app/static/css/tailwind.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "3.4.17"
+  }
+}

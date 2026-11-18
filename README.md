@@ -123,7 +123,7 @@ scms-ai-pupr/
 │   ├── auth.py                      # Sesi login & pembatasan akses per peran
 │   ├── static/
 │   │   └── images/                  # Aset visual dan logo instansi
-│   ├── views/templates/             # Antarmuka pengguna (Jinja2, TailwindCSS, Leaflet.js)
+│   ├── views/templates/             # Antarmuka pengguna (Jinja2, Tailwind CSS lokal, Leaflet.js)
 │   │   ├── login.html
 │   │   ├── buat_laporan.html
 │   │   ├── verifikasi_detail.html
@@ -132,7 +132,8 @@ scms-ai-pupr/
 │   ├── database.py                  # Konfigurasi engine & session SQLite/SQLAlchemy
 │   └── main.py                      # Entrypoint aplikasi & routing FastAPI terintegrasi
 ├── database/
-│   └── seed.py                      # Seeder data awal sesuai skenario BDD & Mockup
+│   ├── seed.py                      # Seeder data awal sesuai skenario BDD & Mockup
+│   └── foto_demo.py                 # Pembuat foto demo berlabel untuk tiket seed (app/static/demo/)
 ├── docs/
 │   ├── activity_diagrams/           # File PlantUML (.puml) Activity Diagram 12 Use Case
 │   └── sequence_diagrams/           # File PlantUML (.puml) Sequence Diagram 12 Use Case
@@ -154,7 +155,7 @@ scms-ai-pupr/
 │   ├── cucumber.json                # Hasil BDD format Cucumber (pytest-bdd --cucumberjson)
 │   ├── cucumber_bdd_report.html     # Laporan BDD per sprint (dibuat generate_bdd_report.py)
 │   ├── selenium_e2e_report.html     # pytest-html: 67 skenario BDD + 3 E2E Selenium
-│   └── dokumentasi_testing_scms.html # pytest-html: seluruh 596 tes
+│   └── dokumentasi_testing_scms.html # pytest-html: seluruh 620 tes
 ├── generate_bdd_report.py           # Pembuat cucumber_bdd_report.html dari cucumber.json
 ├── pytest.ini                       # Konfigurasi pytest runner
 ├── requirements.txt                 # Daftar dependensi paket Python
@@ -188,6 +189,8 @@ python -m venv venv
 pip install -r requirements.txt
 ```
 
+> **Tailwind CSS tanpa CDN.** Halaman memakai `app/static/css/tailwind.css` yang sudah di-build dan ikut di-commit, jadi aplikasi (dan image Docker) tidak butuh Node.js maupun internet untuk tampil rapi. Node.js hanya dibutuhkan bila mengubah kelas Tailwind di template atau `app/static/js/`: jalankan `npm install` sekali, lalu `npm run build:css` (atau `npm run watch:css` saat mengembangkan), dan commit `tailwind.css` yang baru. `tests/test_css_lokal.py` gagal bila ada template yang kembali memakai CDN atau CSS belum di-build ulang untuk kelas yang dicek.
+
 ### 4. Salin `.env.example` menjadi `.env` lalu sesuaikan
 Isi `DATABASE_URL` (tanpa `.env`, aplikasi memakai SQLite `scms_dev.db`) dan `SCMS_SECRET_KEY` (penanda tangan cookie sesi login).
 
@@ -198,12 +201,13 @@ Isi `DATABASE_URL` (tanpa `.env`, aplikasi memakai SQLite `scms_dev.db`) dan `SC
 python -m database.seed            # SQLite lokal
 python -m database.seed --force    # PostgreSQL: hanya jika memang ingin mereset
 ```
+> **Foto demo.** Laporan seed memakai foto di `app/static/demo/` (ikut di-commit dan masuk image Docker; `app/static/uploads/` hanya untuk unggahan warga dan disimpan di volume). Foto ini ilustrasi buatan `database/foto_demo.py` berlabel **"FOTO DEMO"**, bukan foto lapangan. Untuk membuat ulang: `python -m database.foto_demo`; untuk memakai foto lapangan sungguhan, simpan JPEG dengan nama yang sama di folder itu.
 
 ### 6. Jalankan Pengujian Otomatis
 Pengujian **selalu** memakai database terpisah `scms_test.db`, sehingga database di `.env` tidak tersentuh.
 ```bash
-pytest -v                                      # semua 596 tes: 67 BDD + 3 E2E Selenium + 526 uji cepat (butuh Chrome/Edge)
-pytest tests/test_keamanan_dan_logika.py tests/test_sprint2.py tests/test_laporan_kinerja.py tests/test_audit_sprint2.py tests/test_tanpa_sla.py tests/test_tampilan_tiket.py tests/test_sprint3_risiko.py tests/test_sprint3_tutup.py tests/test_sprint3_temuan.py tests/test_sprint3_kunjungan.py tests/test_sprint3_notifikasi.py tests/test_sprint3_notifikasi_langsung.py -v   # uji cepat saja, tanpa browser
+pytest -v                                      # semua 620 tes: 67 BDD + 3 E2E Selenium + 550 uji cepat (butuh Chrome/Edge)
+pytest tests/test_keamanan_dan_logika.py tests/test_sprint2.py tests/test_laporan_kinerja.py tests/test_audit_sprint2.py tests/test_tanpa_sla.py tests/test_tampilan_tiket.py tests/test_sprint3_risiko.py tests/test_sprint3_tutup.py tests/test_sprint3_temuan.py tests/test_sprint3_kunjungan.py tests/test_sprint3_notifikasi.py tests/test_sprint3_notifikasi_langsung.py tests/test_css_lokal.py tests/test_foto_demo.py -v   # uji cepat saja, tanpa browser
 HEADLESS=1 pytest -v                           # browser tanpa jendela
 ```
 
@@ -213,7 +217,7 @@ Keempat berkas di `reports/` dibuat ulang dengan tiga perintah berikut (butuh `p
 # 1. BDD (67 skenario) + 3 E2E Selenium -> reports/cucumber.json + reports/selenium_e2e_report.html
 HEADLESS=1 python -m pytest tests/step_definitions --cucumberjson=reports/cucumber.json --html=reports/selenium_e2e_report.html --self-contained-html
 
-# 2. Seluruh 596 tes -> reports/dokumentasi_testing_scms.html
+# 2. Seluruh 620 tes -> reports/dokumentasi_testing_scms.html
 HEADLESS=1 python -m pytest --html=reports/dokumentasi_testing_scms.html --self-contained-html
 
 # 3. reports/cucumber.json -> reports/cucumber_bdd_report.html (dikelompokkan Sprint 1 / Sprint 2 / Sprint 3)

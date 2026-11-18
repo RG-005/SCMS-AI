@@ -72,11 +72,11 @@
 | Lapisan (Layer) | Teknologi / Pustaka | Peran & Justifikasi Teknis |
 | :--- | :--- | :--- |
 | **Web Framework & Auth** | FastAPI, Uvicorn, Starlette SessionMiddleware, itsdangerous, passlib[bcrypt] | HTTP routing, form parsing, signed session cookie (`SCMS_SECRET_KEY`), bcrypt password hashing, dan RBAC 4 peran. |
-| **Template Engine & UI** | Jinja2 & Tailwind CSS | Server-Side Rendering dengan shared layout (`_layout.html`) dan badge notifikasi belum dibaca. |
+| **Template Engine & UI** | Jinja2 & Tailwind CSS 3.4 (di-build lokal) | Server-Side Rendering dengan shared layout (`_layout.html`) dan badge notifikasi belum dibaca. CSS dibangun dari template oleh `npm run build:css` ke `app/static/css/tailwind.css` (ikut di-commit), tanpa CDN saat aplikasi berjalan. |
 | **Geospatial & Mapping** | Leaflet.js 1.9.4, OpenStreetMap, Nominatim API | Visualisasi titik kerusakan jalan, lingkaran heatmap severity, serta Forward & Reverse Geocoding. |
 | **ORM & Database** | SQLAlchemy 2.0, PostgreSQL (`psycopg2-binary`), SQLite | Pemetaan 11 tabel ORM, menggunakan SQLite terpisah (`scms_test.db`) saat pengujian otomatis. |
 | **AI Pipeline (CV & NLP)** | Pillow, YOLOv8 v4 (`ultralytics` + `model_config.json`), Sentence-Transformers | Validasi foto asli, deteksi kerusakan jalan dengan ambang per kelas & kotak deteksi, dan kemiripan semantik deskripsi. |
-| **Automated Testing** | Pytest, Pytest-BDD, Selenium WebDriver, FastAPI TestClient | Menjalankan 596 tes otomatis (67 skenario BDD + 3 E2E Selenium + 526 fast integration tests; 1 uji migrasi PostgreSQL dilewati tanpa `SCMS_TEST_POSTGRES_URL`). |
+| **Automated Testing** | Pytest, Pytest-BDD, Selenium WebDriver, FastAPI TestClient | Menjalankan 620 tes otomatis (67 skenario BDD + 3 E2E Selenium + 550 fast integration tests; 1 uji migrasi PostgreSQL dilewati tanpa `SCMS_TEST_POSTGRES_URL`). |
 
 ## 3. Lapisan Model & Entitas (`app/models/entities.py` — 11 Tabel)
 1. **`Warga` (`warga`):** `id_warga` (PK), `nik`, `nama_warga`, `email`, `no_hp`, `password_hash`, `alamat_domisili`, `is_active`.
