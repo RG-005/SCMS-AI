@@ -1,38 +1,95 @@
 @startuml
-title Sequence Diagram - UC-I: Notifikasi Status Laporan
+title Sequence Diagram - UC-I: Notifikasi Status Laporan (in-app + badge/toast tanpa refresh)
+actor "Admin / Penilik Jalan" as Staf
 actor Warga
-boundary "PanelNotifikasi\n(UI)" as UI
-control "KontrolNotifikasi" as Ctrl
-entity "Notifikasi" as Notif
-boundary "HalamanLacakLaporan\n(UI)" as UILacak
+control "Controller staf\n(Verifikasi / Penugasan /\nInspeksi / Penanganan)" as CtrlStaf
+control "alur_status\n(ubah_status / tutup_tiket)" as Alur
+entity WorkOrder
+entity Laporan
+entity RiwayatStatus
+entity Notifikasi as Notif
+boundary "Halaman Warga\n(_layout / Beranda / Buat Laporan)\n+ notifikasi_langsung.js" as UI
+control "GET /api/notifikasi/belum-dibaca" as Api
+control KontrolNotifikasi as Ctrl
+boundary "HalamanLacakLaporan\n(/lacak?id=...)" as UILacak
 
-Warga -> UI : Klik ikon Notifikasi
+== 1. Notifikasi dibuat saat status berubah ==
+Staf -> CtrlStaf : aksi (setujui, tugaskan, inspeksi, SPK, progres, tolak / konfirmasi tutup)
+activate CtrlStaf
+alt Penutupan tiket (Tolak saat verifikasi / Konfirmasi Tutup Tiket)
+    CtrlStaf -> Alur : tutup_tiket(wo, alasan, aktor)\n(alasan wajib salah satu ALASAN_TUTUP)
+else Perubahan status lain
+    CtrlStaf -> Alur : ubah_status(wo, status_baru, keterangan, aktor)
+end
+activate Alur
+Alur -> WorkOrder : compare-and-set status (KonflikStatus bila bentrok)
+Alur -> Laporan : status semua laporan tiket = status_baru
+Alur -> RiwayatStatus : catat_riwayat(status, keterangan, aktor)\n(Ditutup: "Ditutup: <alasan>")
+loop laporan_per_warga(laporan): satu laporan terbaru per warga unik\n(laporan "Temuan Penilik" tanpa warga dilewati)
+    Alur -> Notif : kirim_notifikasi(laporan, judul, pesan)\n(mis. "Laporan ditutup" + "Catatan: Ditutup: <alasan>")\nstatus_baca = False
+end
+deactivate Alur
+CtrlStaf --> Staf : halaman diperbarui
+deactivate CtrlStaf
+note over Notif
+  Notifikasi juga dibuat oleh KontrolPelaporan:
+  "Laporan diterima" (laporan baru) dan
+  "Laporan digabungkan" (deduplikasi BR-3).
+  Tidak ada status pengiriman / Kirim Ulang (BR-8 dihapus).
+end note
+
+== 2. Badge & toast tanpa refresh (polling) ==
+Warga -> UI : membuka halaman Warga
 activate UI
-UI -> Ctrl : get_notifikasi_warga(id_warga)
+UI --> Warga : badge #badgeNotif (jumlah belum dibaca) dari render server
+loop setiap SCMS_POLL_NOTIF_DETIK detik (bawaan 15) dan saat tab kembali terlihat
+    UI -> Api : fetch (cookie sesi, no-store)
+    activate Api
+    alt Tanpa login
+        Api --> UI : 401 (polling berhenti)
+    else Bukan Warga
+        Api --> UI : 403 (polling berhenti)
+    else Warga
+        Api -> Ctrl : jumlah_belum_dibaca(id_warga)\nbelum_dibaca_terbaru(id_warga, 5)
+        activate Ctrl
+        Ctrl -> Notif : query status_baca = False
+        Notif --> Ctrl : jumlah + notifikasi terbaru
+        Ctrl --> Api
+        deactivate Ctrl
+        Api --> UI : JSON {jumlah, terbaru[id, id_laporan, judul, pesan, waktu, url]}
+    end
+    deactivate Api
+    UI -> UI : perbarui / hapus #badgeNotif
+    opt Ada notifikasi yang belum pernah tampil
+        UI --> Warga : toast #toastNotif (judul, pesan, tautan "Buka")
+        opt Izin Notification API = "granted"
+            UI --> Warga : notifikasi browser "Status laporan <ID> diperbarui"
+        end
+    end
+end
+
+== 3. Membuka & menandai dibaca ==
+Warga -> UI : klik menu Notifikasi (GET /notifikasi)
+UI -> Ctrl : daftar(id_warga)
 activate Ctrl
-
-Ctrl -> Notif : query_by_warga(id_warga)
-activate Notif
-Notif --> Ctrl : list_notifikasi
-deactivate Notif
-
-Ctrl --> UI : return list_notifikasi
+Ctrl -> Notif : query milik warga, terbaru dulu (maks. 50)
+Notif --> Ctrl : daftar notifikasi
+Ctrl --> UI : daftar (.notif-belum-dibaca untuk yang belum dibaca)
 deactivate Ctrl
-UI --> Warga : Tampilkan daftar notifikasi & status baca
-
-Warga -> UI : Klik salah satu item notifikasi (id_notifikasi, id_laporan)
-UI -> Ctrl : tandai_dibaca(id_notifikasi)
-activate Ctrl
-Ctrl -> Notif : update_read_status(id_notifikasi, is_read=True)
-activate Notif
-Notif --> Ctrl : status_updated
-deactivate Notif
-Ctrl --> UI : return ok
-deactivate Ctrl
-
-UI -> UILacak : redirect_ke_detail_laporan(id_laporan)
-activate UILacak
-UILacak --> Warga : Tampilkan detail progres laporan terkait
-deactivate UILacak
+alt Klik satu notifikasi (GET /notifikasi/{id}/buka)
+    UI -> Ctrl : buka(id_notifikasi, id_warga)
+    activate Ctrl
+    Ctrl -> Notif : status_baca = True (hanya milik warga itu)
+    Ctrl --> UI : id_laporan (None -> 404)
+    deactivate Ctrl
+    UI -> UILacak : 303 ke /lacak?id=<id_laporan>
+    activate UILacak
+    UILacak --> Warga : detail & linimasa laporan terkait
+    deactivate UILacak
+else Klik "Tandai semua dibaca" (POST /notifikasi/baca-semua)
+    UI -> Ctrl : tandai_semua_dibaca(id_warga)
+    Ctrl -> Notif : UPDATE status_baca = True
+    UI --> Warga : 303 ke /notifikasi
+end
 deactivate UI
 @enduml

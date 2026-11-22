@@ -1,44 +1,92 @@
 @startuml
-title Sequence Diagram - UC-D: Mengelola Data Master Wilayah & Penilik Jalan
-actor "Admin PUPR" as Admin
-boundary "HalamanMasterData\n(UI)" as UI
-control "KontrolMasterData" as Ctrl
-entity "Wilayah" as Wil
-entity "PenilikJalan" as PJ
+title Sequence Diagram - UC-D: Kelola Data Master Wilayah & Penilik Jalan
+actor "Admin (PPK)" as Admin
+actor "Kepala Bidang" as Kabid
+boundary "HalamanMasterData\n(master_data.html)" as UI
+control "Rute /master-data\n(app/main.py)" as Rute
+control KontrolMasterData as Ctrl
+entity Wilayah
+entity PenilikJalan
+entity WorkOrder
+entity "Admin / Warga\n(cek email)" as Akun
 
-Admin -> UI : Buka halaman Data Master
+== Melihat data master (Admin & Kepala Bidang) ==
+Kabid -> UI : buka GET /master-data (mode baca, tanpa form)
+Admin -> UI : buka GET /master-data
 activate UI
-UI -> Ctrl : get_all_master_data()
+UI -> Rute : GET /master-data
+activate Rute
+Rute -> Ctrl : muat()
 activate Ctrl
-Ctrl -> Wil : find_all()
-Wil --> Ctrl : list_wilayah
-Ctrl -> PJ : find_all_with_wilayah()
-PJ --> Ctrl : list_penilik
-Ctrl --> UI : return (list_wilayah, list_penilik)
+Ctrl -> Wilayah : semua wilayah (urut kode)
+Ctrl -> PenilikJalan : semua penilik (urut wilayah, nama)
+Ctrl -> WorkOrder : beban aktif per penilik\n(status di luar STATUS_FINAL = Selesai / Ditutup)
+Ctrl --> Rute : wilayah + jumlah penilik, penilik + nama wilayah + beban aktif
 deactivate Ctrl
+Rute --> UI : render (form hanya untuk Admin)
+UI --> Admin : tabel Wilayah Rayon & Penilik Jalan
+deactivate Rute
 
-Admin -> UI : Input form Tambah/Update Wilayah atau Penilik Jalan & Submit
-UI -> Ctrl : simpan_master_data(jenis_data, payload)
+== Tambah Wilayah Rayon (Admin) ==
+Admin -> UI : isi #kode_wilayah, #nama_wilayah, kecamatan (opsional), klik #simpanWilayah
+UI -> Rute : POST /master-data/wilayah (peran lain 403)
+activate Rute
+Rute -> Ctrl : tambah_wilayah(kode, nama, kecamatan)
 activate Ctrl
-
-alt Input tidak lengkap atau NIP/Kode duplikat
-    Ctrl --> UI : return Error "Data belum lengkap atau sudah terdaftar"
-    UI --> Admin : Tampilkan peringatan validasi
-else Data Valid
-    alt jenis_data == "wilayah"
-        Ctrl -> Wil : save_or_update(payload)
-        activate Wil
-        Wil --> Ctrl : wilayah_tersimpan
-        deactivate Wil
-    else jenis_data == "penilik"
-        Ctrl -> PJ : save_or_update(payload)
-        activate PJ
-        PJ --> Ctrl : penilik_tersimpan
-        deactivate PJ
-    end
-    Ctrl --> UI : return Sukses
-    UI --> Admin : Tampilkan konfirmasi "Data master berhasil diperbarui"
+alt Kode / nama kosong
+    Ctrl --> Rute : "Data belum lengkap, isi semua kolom wajib"
+else Kode bukan A-Z, 0-9, "-" (2-20 karakter)
+    Ctrl --> Rute : "Kode Wilayah hanya boleh berisi huruf, angka, dan tanda hubung (2-20 karakter)"
+else Kode atau nama wilayah sudah ada
+    Ctrl -> Wilayah : get(kode) / nama (tanpa beda huruf)
+    Ctrl --> Rute : "Kode Wilayah atau NIP Penilik Jalan sudah terdaftar di sistem"
+else Valid
+    Ctrl -> Wilayah : add + commit (IntegrityError bersamaan -> pesan duplikat)
+    Ctrl --> Rute : "Data master berhasil diperbarui"
 end
 deactivate Ctrl
+Rute --> UI : sukses: 303 ke /master-data + flash; gagal: render ulang dengan isian
+deactivate Rute
+
+== Tambah Penilik Jalan (Admin) ==
+Admin -> UI : isi #nip, #nama_penilik, #id_wilayah_penilik, #email_penilik (opsional), klik #simpanPenilik
+UI -> Rute : POST /master-data/penilik
+activate Rute
+Rute -> Ctrl : tambah_penilik(nip, nama, id_wilayah, email)
+activate Ctrl
+alt NIP sudah terdaftar (dicek lebih dulu)
+    Ctrl --> Rute : "Kode Wilayah atau NIP Penilik Jalan sudah terdaftar di sistem"
+else NIP / nama / wilayah kosong, atau wilayah tidak ada
+    Ctrl --> Rute : "Data belum lengkap, isi semua kolom wajib"
+else NIP bukan 18 digit angka ASCII
+    Ctrl --> Rute : "Format NIP tidak valid (18 digit angka)"
+else Email tidak valid / sudah dipakai
+    Ctrl -> Akun : cek email di Admin, PenilikJalan, Warga
+    Ctrl --> Rute : "Format email tidak valid" / "Email sudah dipakai akun lain"
+else Valid
+    Ctrl -> Ctrl : sandi sementara acak, hash bcrypt
+    Ctrl -> PenilikJalan : add PNL-xx (Tersedia, aktif) + commit\n(ID bentrok: coba ulang maks. 5 kali)
+    Ctrl --> Rute : "Data master berhasil diperbarui" + akun_baru (sandi sementara)
+end
+deactivate Ctrl
+Rute --> UI : render langsung (tanpa redirect) agar sandi sementara\ntidak masuk cookie sesi; ditampilkan sekali
+deactivate Rute
+
+== Ubah ketersediaan Penilik (Admin) ==
+Admin -> UI : pilih Tersedia / Penuh / Cuti pada baris penilik
+UI -> Rute : POST /master-data/penilik/{id}/ketersediaan
+activate Rute
+Rute -> Ctrl : ubah_ketersediaan(id_penilik, status)
+activate Ctrl
+alt Penilik tidak ada
+    Ctrl --> Rute : tidak_ditemukan -> HTTP 404
+else Status di luar Tersedia / Penuh / Cuti
+    Ctrl --> Rute : "Status ketersediaan tidak valid (pilih Tersedia, Penuh, atau Cuti)" -> HTTP 400
+else Valid
+    Ctrl -> PenilikJalan : status_ketersediaan = status; commit
+    Ctrl --> Rute : "Data master berhasil diperbarui" -> 303 ke /master-data
+end
+deactivate Ctrl
+deactivate Rute
 deactivate UI
 @enduml

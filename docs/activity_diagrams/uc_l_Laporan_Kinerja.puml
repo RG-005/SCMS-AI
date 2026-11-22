@@ -1,8 +1,8 @@
 @startuml
-title Activity Diagram - UC-L: Mengekspor Laporan Kinerja Infrastruktur
+title Activity Diagram - UC-L: Memantau & Mengekspor Laporan Kinerja Infrastruktur
 |Kepala Bidang / Admin|
 start
-:Membuka menu "Laporan Kinerja";
+:Membuka menu "Laporan Kinerja" (/laporan-kinerja);
 
 |Sistem (SCMS-AI)|
 :Menampilkan form filter (Tanggal Mulai, Tanggal Akhir, Wilayah);
@@ -14,30 +14,43 @@ start
 |Sistem (SCMS-AI)|
 :Memvalidasi format dan urutan tanggal;
 if (Tanggal valid?) then (Tidak)
-  :Menampilkan pesan error\n"Format tanggal tidak valid" atau\n"Tanggal mulai tidak boleh setelah tanggal akhir";
+  :Menampilkan pesan error (HTTP 400)\n"Format tanggal tidak valid (gunakan YYYY-MM-DD)" atau\n"Tanggal mulai tidak boleh setelah tanggal akhir";
   stop
 else (Ya)
 endif
-:Mengambil Work Order yang diterima pada periode\n(waktu mulai = entri pertama riwayat_status);
+:Mengambil Work Order sesuai wilayah yang diterima pada periode\n(waktu mulai = entri pertama riwayat_status, tanggal WIB);
+:Memisahkan tiket Ditutup (tidak dihitung di total,\npenyelesaian, durasi, prioritas, maupun grafik);
 if (Ada tiket pada periode?) then (Tidak)
-  :Menampilkan pesan\n"Tidak ada data kinerja pada periode yang dipilih";
-  :Menyembunyikan tombol unduh;
+  :Menampilkan pesan\n"Tidak ada data kinerja pada periode yang dipilih"\ntanpa grafik dan tanpa tombol unduh;
   stop
 else (Ya)
 endif
 :Menghitung durasi per tahap dari riwayat_status\n(Verifikasi, Penugasan, Inspeksi Lapangan, Penerbitan SPK, Perbaikan;\ntahap yang tidak dilalui tidak dihitung);
 :Menghitung umur tiket aktif dan tahap saat ini\n(diurutkan dari yang paling lama);
-:Menyusun rekap per wilayah dan per prioritas\n(penyelesaian, durasi per tahap, risk score, rating);
-:Menampilkan KPI, tabel rekap, dan detail tiket;
+:Menyusun rekap per wilayah dan per prioritas\n(penyelesaian, durasi per tahap, Risk Score, rating);
+:Menyusun ringkasan tiket Ditutup per alasan;
+if (Ada tiket yang tidak Ditutup?) then (Ya)
+  :Menyiapkan data 4 grafik dari struktur yang sama dengan tabel\n(data_grafik -> JSON #dataGrafikKinerja);
+  if (Chart.js lokal (/static/js/chart.umd.js) termuat?) then (Ya)
+    :Menggambar grafik: tren masuk vs selesai per minggu (garis),\ndistribusi prioritas (doughnut), rata-rata durasi per tahap (batang),\nrekap selesai/aktif per wilayah (batang);
+  else (Tidak)
+    :Menampilkan catatan "Grafik tidak dapat dimuat"\n(tabel tetap lengkap);
+  endif
+else (Tidak, hanya tiket Ditutup)
+endif
+:Menampilkan KPI, grafik, tabel rekap, detail tiket,\ndan ringkasan Ditutup;
 
 |Kepala Bidang / Admin|
 if (Aksi?) then (Unduh CSV)
   :Klik "Unduh Rekap Wilayah (CSV)"\natau "Unduh Detail Tiket (CSV)";
   |Sistem (SCMS-AI)|
+  :Menghitung ulang rekap dengan filter yang sama;
   :Membuat berkas CSV (UTF-8 BOM,\nsel teks diamankan dari formula);
-  :Mengirim berkas sebagai unduhan;
+  :Mengirim berkas laporan_kinerja_<jenis>_<periode>.csv;
+elseif (Ubah filter) then
+  :Kembali memilih periode / wilayah;
+  note right: Grafik dan tabel mengikuti filter yang sama
 else (Cetak)
-  |Kepala Bidang / Admin|
   :Klik "Cetak / Simpan PDF";
   :Browser mencetak tampilan laporan;
 endif

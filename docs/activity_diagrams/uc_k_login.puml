@@ -1,32 +1,78 @@
 @startuml
-title Activity Diagram - UC-K: Melakukan Login
+title Activity Diagram - UC-K: Melakukan Login, Sesi & Logout
 
 |User|
 start
-:Membuka halaman Login;
-:Memasukkan email/nomor HP dan password;
-:Menekan tombol "Sign In / Masuk";
+:Membuka halaman Login (GET /Login);
+:Memasukkan identifier (email / no. HP / NIK / NIP) dan password;
+:Menekan tombol "Masuk" (POST /Login);
 
 |Sistem|
+if (Origin/Referer berasal dari host lain?) then (Ya)
+  :Menolak permintaan (HTTP 403);
+  stop
+else (Tidak / tidak ada)
+endif
+:Menentukan IP klien\n(CF-Connecting-IP, lalu X-Forwarded-For pertama, lalu alamat soket);
+if (Identifier atau IP sedang terkunci?\n(>= 5 gagal per identifier atau >= 20 gagal per IP\ndalam 15 menit; dapat diatur lewat env)) then (Ya)
+  :Menampilkan halaman Login dengan pesan\n"Terlalu banyak percobaan. Coba lagi dalam N menit." (HTTP 429);
+  note right: Password tidak diperiksa selama terkunci
+  stop
+else (Tidak)
+endif
+:Mencari akun (Admin/Kepala Bidang -> Penilik Jalan -> Warga);
 if (Akun terdaftar?) then (Tidak)
+  :Mencatat percobaan gagal (identifier + IP);
   :Menampilkan pesan "Akun tidak ditemukan";
   stop
 else (Ya)
-  if (Password sesuai?) then (Tidak)
+  if (Password sesuai (bcrypt)?) then (Tidak)
+    :Mencatat percobaan gagal (identifier + IP);
     :Menampilkan pesan "Email/nomor HP atau password salah";
     stop
   else (Ya)
     if (Akun aktif?) then (Tidak)
+      :Mencatat percobaan gagal (identifier + IP);
       :Menampilkan pesan "Akun Anda tidak aktif, silakan hubungi administrator";
       stop
     else (Ya)
-      if (Peran pengguna?) then (User / Warga)
-        :Mengarahkan User ke halaman Home (Citizen);
-      else (Petugas Dinas)
-        :Mengarahkan Petugas Dinas ke Dashboard sesuai peran;
+      :Mereset hitungan gagal identifier;
+      :Menyimpan sesi {id, peran, versi = versi_sesi akun}\n(tanpa nama dan email);
+      if (Peran pengguna?) then (Warga)
+        :Mengarahkan ke /Beranda\n(atau halaman Warga di "next");
+      elseif (Penilik Jalan) then
+        :Mengarahkan ke /TugasLapangan\n(atau "next" yang aman);
+      else (Admin / Kepala Bidang)
+        :Mengarahkan ke /Dashboard\n(atau "next" yang aman);
       endif
-      stop
     endif
   endif
 endif
+
+|User|
+:Membuka halaman lain selama login;
+
+|Sistem|
+:Membaca akun dari database pada setiap request;
+if (Akun aktif, peran sama, dan versi cookie = versi_sesi?) then (Ya)
+  :Menampilkan halaman (nama & email diambil dari database);
+else (Tidak)
+  :Mengosongkan sesi dan mengarahkan ke /Login;
+  stop
+endif
+
+|User|
+:Menekan tombol "Keluar";
+note right
+  Tombol "Keluar" adalah form POST /Logout.
+  Membuka GET /Logout hanya menampilkan
+  halaman konfirmasi dengan tombol yang sama.
+end note
+
+|Sistem|
+:Menaikkan versi_sesi akun (versi_sesi + 1);
+:Mengosongkan sesi;
+:Mengarahkan ke /Login;
+note right: Salinan cookie lama di perangkat mana pun\nkini ditolak karena versinya tidak sama
+stop
 @enduml

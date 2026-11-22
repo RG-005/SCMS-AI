@@ -1,180 +1,359 @@
 @startuml
-title Class Diagram - Sistem SCMS-AI Dinas PUPR Kota Surabaya (Full Sprint 1-3)
+title Class Diagram - Sistem SCMS-AI Dinas PUPR Kota Surabaya (Sprint 1-3, sesuai app/models/entities.py)
 skinparam classAttributeIconSize 0
+hide empty members
 
-package "Entities / Models (Database)" {
-    class Warga {
-        +id_warga : int <<PK>>
-        +nik : str
-        +nama_lengkap : str
-        +email : str
-        +no_hp : str
-        +password_hash : str
+package "Entities / Models (app/models/entities.py)" {
+    class Warga <<warga>> {
+        +id_warga : str(20) <<PK>>
+        +nik : str(16) <<unique>>
+        +nama_warga : str(50)
+        +email : str(50) <<unique>>
+        +no_hp : str(15) <<unique>>
+        +password_hash : str(255)
+        +alamat_domisili : str(255)
+        +is_active : bool
+        +versi_sesi : int = 0 <<C-01>>
     }
 
-    class AdminPUPR {
-        +id_admin : int <<PK>>
-        +nip : str
-        +nama_admin : str
-        +username : str
-        +password_hash : str
+    class Admin <<admin>> {
+        +id_admin : str(20) <<PK>>
+        +nama_admin : str(50)
+        +email_admin : str(50) <<unique>>
+        +password_hash : str(255)
+        +is_kepala_bidang : bool
+        +is_active : bool
+        +versi_sesi : int = 0 <<C-01>>
     }
 
-    class Wilayah {
-        +id_wilayah : int <<PK>>
-        +kode_rayon : str
-        +nama_wilayah : str
-        +kecamatan : str
+    class Wilayah <<wilayah>> {
+        +id_wilayah : str(20) <<PK>>
+        +nama_wilayah : str(50) <<unique>>
+        +kecamatan : str(100)
     }
 
-    class PenilikJalan {
-        +id_penilik : int <<PK>>
-        +id_wilayah : int <<FK>>
-        +nip : str
-        +nama_penilik : str
-        +no_hp : str
-        +status_aktif : bool
+    class PenilikJalan <<penilik_jalan>> {
+        +id_penilik : str(20) <<PK>>
+        +id_wilayah : str(20) <<FK>>
+        +nama_penilik : str(50)
+        +nip : str(20) <<unique>>
+        +email_penilik : str(50) <<unique>>
+        +password_hash : str(255)
+        +status_ketersediaan : str = "Tersedia" (Tersedia | Penuh | Cuti)
+        +is_active : bool
+        +versi_sesi : int = 0 <<C-01>>
     }
 
-    class Laporan {
-        +id_laporan : str <<PK>>
-        +id_warga : int <<FK>>
-        +id_wilayah : int <<FK>>
-        +id_admin_verifikator : int <<FK>>
-        +judul_laporan : str
-        +deskripsi : str
-        +kategori_kerusakan : str
-        +lokasi_alamat : str
+    class WorkOrder <<work_order>> {
+        +id_work_order : str(20) <<PK>>
+        +id_admin : str(20) <<FK>>
+        +id_penilik : str(20) <<FK>>
+        +id_wilayah : str(20) <<FK>>
+        +kategori_kerusakan : str(50)
+        +lokasi_jalan : str(100)
         +latitude : float
         +longitude : float
-        +foto_awal : str
-        +skor_keparahan_ai : float
-        +prioritas : str
-        +status_laporan : str
-        +is_duplikat : bool
-        +created_at : datetime
-    }
-
-    class Inspeksi {
-        +id_inspeksi : int <<PK>>
-        +id_laporan : str <<FK>>
-        +id_penilik : int <<FK>>
-        +tanggal_inspeksi : datetime
-        +dimensi_kerusakan : str
-        +catatan_teknis : str
-        +foto_inspeksi : str
-        +rekomendasi_tindakan : str
-    }
-
-    class WorkOrder {
-        +id_wo : str <<PK>>
-        +id_laporan : str <<FK>>
-        +id_admin : int <<FK>>
-        +nomor_spk : str
-        +tim_pelaksana : str
-        +status_pengerjaan : str
-        +foto_selesai : str
-        +catatan_penyelesaian : str
-        +tanggal_mulai : datetime
+        +severity_score_kasus : float
+        +severity_ai : float <<Sprint 3>>
+        +exposure_count : int = 1
+        +vulnerability_score : float
+        +kelas_jalan : str = "Kolektor"
+        +risk_score : float
+        +prioritas : str = "Rendah"
+        +status_work_order : str = "Dilaporkan"
+        +sla_rekomendasi : str <<deprecated>>
+        +log_keputusan : text
+        +tanggal_ditugaskan : date
+        +nomor_spk : str(50) <<unique>>
+        +tim_pelaksana : str(100)
         +tanggal_selesai : datetime
+        +alasan_tutup : str(50) <<Sprint 3>>
+        +ditutup_oleh : str(100) <<Sprint 3>>
+        +tanggal_ditutup : datetime <<Sprint 3>>
+        +perlu_tinjauan_manual : bool <<Sprint 3>>
+        --
+        +severity_ai_awal <<property>>
+        +inspeksi_lapangan <<property>>
+        +severity_lapangan <<property>>
+        +jadwal_lanjutan_aktif <<property>>
+        +laporan_pembuka <<property>>
+        +dari_temuan <<property>>
+        +rekomendasi_tutup_tertunda <<property>>
     }
 
-    class Notifikasi {
-        +id_notifikasi : int <<PK>>
-        +id_warga : int <<FK>>
-        +id_laporan : str <<FK>>
-        +judul_pesan : str
-        +isi_pesan : str
-        +is_read : bool
-        +created_at : datetime
+    class Laporan <<laporan>> {
+        +id_laporan : str(20) <<PK>> (LAP-YYYY-XXXX)
+        +id_work_order : str(20) <<FK>>
+        +id_warga : str(20) <<FK, nullable sejak Sprint 3>>
+        +id_wilayah : str(20) <<FK>>
+        +sumber : str = "Warga" (Warga | Temuan Penilik) <<Sprint 3>>
+        +id_penilik_pencatat : str(20) <<FK, Sprint 3>>
+        +deskripsi : text
+        +url_foto : str(255)
+        +lokasi_teks : str(100)
+        +latitude : float
+        +longitude : float
+        +severity_score : float
+        +status : str = "Dilaporkan"
+        +tanggal_lapor : datetime
+        +kotak_deteksi : text (JSON)
+        +perlu_tinjauan_manual : bool <<Sprint 3>>
+        +token_kirim : str(40) <<unique>>
+        --
+        +dari_temuan <<property>>
+        +label_pelapor <<property>>
+        +daftar_kotak <<property>>
     }
 
-    class Rating {
-        +id_rating : int <<PK>>
-        +id_laporan : str <<FK>>
-        +id_warga : int <<FK>>
-        +skor_bintang : int
-        +komentar_ulasan : str
-        +created_at : datetime
+    class Inspeksi <<inspeksi>> {
+        +id_inspeksi : str(20) <<PK>>
+        +id_laporan : str(20) <<FK>>
+        +id_penilik : str(20) <<FK>>
+        +id_work_order : str(20) <<FK>>
+        +dimensi_kerusakan : str(50)
+        +rekomendasi_penanganan : str(50)
+        +hasil_temuan : text (catatan teknis)
+        +url_foto_temuan : str(255)
+        +kategori_terkonfirmasi : str(50) <<Sprint 3>>
+        +tingkat_kerusakan : str(20) <<Sprint 3>>
+        +severity_lapangan : float <<Sprint 3>>
+        +rekomendasi_tutup : bool <<Sprint 3>>
+        +alasan_rekomendasi : str(50) <<Sprint 3>>
+        +keputusan_rekomendasi : str(20) (Dikonfirmasi | Ditolak) <<Sprint 3>>
+        +diputuskan_oleh : str(100) <<Sprint 3>>
+        +tanggal_inspeksi : date
+    }
+
+    class Perbaikan <<perbaikan>> {
+        +id_perbaikan : str(20) <<PK>>
+        +id_work_order : str(20) <<FK>>
+        +status_perbaikan : str(30)
+        +catatan : text
+        +foto_sesudah : str(255)
+        +jadwal_lanjutan : str(50) (tanggal ISO) <<Sprint 3>>
+        +tanggal_selesai : datetime
+        +dicatat_oleh : str(50)
+        +waktu : datetime
+        +perbaikan_sementara : bool <<Sprint 3>>
+        +status_jadwal : str(20) (Aktif | Diganti | Tercatat) <<Sprint 3>>
+        +kunjungan_dicatat_pada : datetime <<Sprint 3>>
+        +catatan_kunjungan : text <<Sprint 3>>
+        +foto_kunjungan : str(255) <<Sprint 3>>
+        --
+        +tanggal_lanjutan <<property>>
+        +jadwal_tampil <<property>>
+    }
+
+    class Notifikasi <<notifikasi>> {
+        +id_notifikasi : str(20) <<PK>>
+        +id_laporan : str(20) <<FK>>
+        +id_warga : str(20) <<FK>>
+        +judul : str(100)
+        +pesan : text
+        +status_baca : bool = False
+        +waktu_kirim : datetime
+        +status_kirim : str(20) <<deprecated>>
+        +jumlah_percobaan : int = 0 <<deprecated>>
+        +waktu_percobaan_terakhir : datetime <<deprecated>>
+    }
+
+    class Rating <<rating>> {
+        +id_rating : str(20) <<PK>>
+        +id_laporan : str(20) <<FK, unique>>
+        +nilai_bintang : int (1-5)
+        +komentar : text
+        +tanggal_rating : datetime
+    }
+
+    class RiwayatStatus <<riwayat_status>> {
+        +id_riwayat : int <<PK, autoincrement>>
+        +id_work_order : str(20) <<FK>>
+        +status : str(30)
+        +keterangan : text
+        +aktor : str(50)
+        +waktu : datetime
+    }
+
+    note bottom of Notifikasi
+      «deprecated»: fitur Notifikasi Gagal & Kirim Ulang (BR-8)
+      dihapus; kolom tidak ditulis/dibaca aplikasi, tidak di-drop.
+    end note
+    note bottom of WorkOrder
+      «deprecated» sla_rekomendasi: SLA dihapus (revisi asisten dosen).
+    end note
+}
+
+package "Domain Services (app/services/)" {
+    class AIService <<ai_service.py>> {
+        +mode_cv : str <<property>>
+        +is_simulasi : bool <<property>>
+        +validasi_foto(nama_berkas, ukuran_mb, data) : HasilValidasiFoto
+        +analisis_foto(nama_berkas, data) : HasilVisi
+        +kemiripan_deskripsi(teks1, teks2) : float
+    }
+    class VisiSimulasi
+    class VisiYolo {
+        +BASE_SEVERITY : dict
+    }
+    class "risk_scoring" as RiskScoring <<module>> {
+        +hitung_risk_score(S, E, V, C) : float
+        +klasifikasi_prioritas(skor) : str
+        +skor_ambigu(skor) : bool
+        +terapkan_ke_work_order(wo) : HasilRisiko
+    }
+    class "deduplikasi" as Deduplikasi <<module>> {
+        +cari_duplikat(...) : KandidatDuplikat
+        +jarak_meter(...) : float
+    }
+    class "alur_status" as AlurStatus <<module>> {
+        +TRANSISI_SAH : dict
+        +STATUS_FINAL = (Selesai, Ditutup)
+        +ALASAN_TUTUP : tuple
+        +ubah_status(db, wo, status_baru, keterangan, aktor, catat_walau_sama) : bool
+        +tutup_tiket(db, wo, alasan, aktor) : bool
+        +kirim_notifikasi(db, laporan, judul, pesan) : Notifikasi
+        +laporan_per_warga(laporan_list) : list
+        +tahapan_linimasa(status_tercapai) : list
+    }
+    class "penyimpanan" as Penyimpanan <<module>> {
+        +tulis_dengan_foto(db, data, format, langkah)
+        +dengan_coba_ulang(db, langkah)
+        +id_berurutan(...) / id_acak(...)
+    }
+    AIService o-- VisiSimulasi
+    AIService o-- VisiYolo
+}
+
+package "Keamanan & Sesi (app/auth.py, app/batas_login.py)" {
+    class "auth" as Auth <<module>> {
+        +simpan_login(request, hasil)
+        +muat_akun(sesi) : dict
+        +pengguna_saat_ini(request) : dict
+        +keluar(request, akhiri_sesi)
+        +akhiri_semua_sesi(db, akun)
+        +wajib_peran(*peran)
+    }
+    class "batas_login" as BatasLogin <<module>> {
+        +ip_klien(request) : str
+        +menit_terkunci(identifier, ip) : int
+        +catat_gagal(identifier, ip)
+        +reset_identifier(identifier)
+        +reset_semua()
     }
 }
 
-package "AI & Core Services" {
-    class RoadDamageDetector {
-        +model_path : str
-        +conf_per_class : dict
-        +infer_imgsz : int
-        +analyze_image(image_path: str) : dict
-        +hitung_severity_dan_kategori(dets: list, w: int, h: int) : tuple
-    }
-}
-
-package "Controllers / Services (Business Logic)" {
+package "Controllers (app/controllers/)" {
     class KontrolAutentikasi {
-        +login_pengguna(username: str, password: str) : dict
-        +logout_pengguna() : bool
+        +cari_akun(identifier) : (akun, peran)
+        +autentikasi(identifier, password) : dict
+        +registrasi_warga(...) : dict
     }
-
     class KontrolPelaporan {
-        +buat_laporan_baru(data: dict, file_foto: UploadFile) : dict
-        +cek_duplikasi_spasial(lat: float, lon: float, kategori: str) : dict
-        +get_detail_lacak_laporan(id_laporan: str) : dict
-        +simpan_rating_warga(id_laporan: str, id_warga: int, skor: int, ulasan: str) : dict
+        +validasi_foto(filename, size_mb, data)
+        +analisis_ai_cv(filename, data)
+        +kirim_laporan(...) : dict
     }
-
     class KontrolVerifikasi {
-        +get_antrean_prioritas() : list
-        +verifikasi_laporan(id_laporan: str, id_admin: int, keputusan: str, catatan: str) : dict
+        +muat_daftar_tiket()
+        +lihat_detail_tiket(id_work_order)
+        +setujui_tiket(id_work_order, email_admin)
+        +tugaskan_inspeksi_tambahan(id_work_order, nama_penilik, email_admin)
+        +lanjutkan_tanpa_inspeksi(id_work_order, email_admin)
+        +tolak_tiket(id_work_order, alasan, email_admin) : dict
     }
-
-    class KontrolInspeksi {
-        +get_daftar_tugas_inspeksi(id_penilik: int) : list
-        +simpan_hasil_inspeksi(id_laporan: str, id_penilik: int, data_form: dict) : dict
+    class KontrolPenugasan {
+        +get_semua_work_order(filter_wilayah, filter_status)
+        +cek_ketersediaan_penilik(id_work_order)
+        +tugaskan_penilik(id_work_order, nama_penilik)
+        +ringkasan_kpi(wo_list) : dict
     }
-
-    class KontrolPenanganan {
-        +terbitkan_work_order(id_laporan: str, id_admin: int, data_spk: dict) : dict
-        +update_progres_perbaikan(id_laporan: str, status: str, catatan: str, foto_selesai: UploadFile) : dict
+    class KontrolDashboard {
+        +muat_dashboard()
+        +filter_dashboard(wilayah, status, kategori)
+        +ringkasan_kpi(wo_list) : dict
     }
-
+    class KontrolLacak {
+        +daftar_laporan_warga(id_warga)
+        +detail_lacak(id_laporan, id_warga) : dict
+        +simpan_rating(id_laporan, id_warga, nilai_bintang, komentar) : dict
+    }
     class KontrolMasterData {
-        +get_all_master_data() : dict
-        +simpan_wilayah(payload: dict) : dict
-        +simpan_penilik_jalan(payload: dict) : dict
+        +muat() : dict
+        +tambah_wilayah(kode, nama, kecamatan) : dict
+        +tambah_penilik(nip, nama, id_wilayah, email) : dict
+        +ubah_ketersediaan(id_penilik, status) : dict
     }
-
+    class KontrolInspeksi {
+        +boleh_akses(wo, penilik) : bool
+        +daftar_tugas(id_penilik) : dict
+        +detail(id_work_order, id_penilik) : dict
+        +simpan_inspeksi(...) : dict
+        +catat_temuan(...) : dict
+    }
+    class KontrolPenanganan {
+        +terbitkan_spk(id_work_order, nomor_spk, tim_pelaksana, status_awal, aktor) : dict
+        +perbarui_progres(...) : dict
+        +catat_kunjungan_lanjutan(...) : dict
+        +konfirmasi_tutup(id_work_order, aktor) : dict
+        +tolak_rekomendasi(id_work_order, aktor) : dict
+    }
     class KontrolNotifikasi {
-        +create_notifikasi(id_warga: int, id_laporan: str, pesan: str) : bool
-        +get_notifikasi_warga(id_warga: int) : list
-        +tandai_dibaca(id_notifikasi: int) : bool
+        +daftar(id_warga, batas)
+        +jumlah_belum_dibaca(id_warga) : int
+        +belum_dibaca_terbaru(id_warga, batas) : list
+        +buka(id_notifikasi, id_warga) : str
+        +tandai_semua_dibaca(id_warga) : int
+    }
+    class KontrolLaporanKinerja {
+        +rekap(tanggal_mulai, tanggal_akhir, wilayah) : dict
+        +csv_per_wilayah(data) : str
+        +csv_per_tiket(data) : str
     }
 }
 
-' Relasi Antar Entitas
-Warga "1" --> "0..*" Laporan : membuat >
-Warga "1" --> "0..*" Notifikasi : menerima >
-Warga "1" --> "0..*" Rating : memberikan >
-Wilayah "1" --> "0..*" PenilikJalan : menaungi >
-Wilayah "1" --> "0..*" Laporan : lokasi >
-AdminPUPR "1" --> "0..*" Laporan : memverifikasi >
-AdminPUPR "1" --> "0..*" WorkOrder : menerbitkan >
-PenilikJalan "1" --> "0..*" Inspeksi : melakukan >
-Laporan "1" --> "0..1" Inspeksi : memiliki >
-Laporan "1" --> "0..1" WorkOrder : ditindaklanjuti >
-Laporan "1" --> "0..*" Notifikasi : memicu >
-Laporan "1" --> "0..1" Rating : dinilai dengan >
+' Relasi antar entitas (foreign key)
+Wilayah "1" -- "0..*" PenilikJalan : menaungi >
+Wilayah "1" -- "0..*" Laporan : lokasi >
+Wilayah "1" -- "0..*" WorkOrder : lokasi >
+Admin "0..1" -- "0..*" WorkOrder : memverifikasi >
+PenilikJalan "0..1" -- "0..*" WorkOrder : ditugaskan >
+PenilikJalan "1" -- "0..*" Inspeksi : melakukan >
+PenilikJalan "0..1" -- "0..*" Laporan : mencatat temuan >
+Warga "0..1" -- "0..*" Laporan : membuat >
+Warga "1" -- "0..*" Notifikasi : menerima >
+WorkOrder "0..1" -- "1..*" Laporan : menggabungkan >
+WorkOrder "1" -- "0..*" Inspeksi : diinspeksi >
+WorkOrder "1" -- "0..*" Perbaikan : progres & kunjungan >
+WorkOrder "1" -- "0..*" RiwayatStatus : riwayat >
+Laporan "1" -- "0..*" Inspeksi : dirujuk >
+Laporan "1" -- "0..*" Notifikasi : memicu >
+Laporan "1" -- "0..1" Rating : dinilai >
 
-' Relasi Controller ke Service & Entitas
-KontrolPelaporan ..> RoadDamageDetector : uses >
-KontrolPelaporan ..> Laporan : manages >
-KontrolPelaporan ..> Rating : manages >
-KontrolVerifikasi ..> Laporan : updates >
-KontrolVerifikasi ..> Notifikasi : triggers >
-KontrolInspeksi ..> Inspeksi : manages >
-KontrolInspeksi ..> Laporan : updates >
-KontrolPenanganan ..> WorkOrder : manages >
-KontrolPenanganan ..> Laporan : updates >
-KontrolMasterData ..> Wilayah : manages >
-KontrolMasterData ..> PenilikJalan : manages >
-KontrolNotifikasi ..> Notifikasi : manages >
+' Ketergantungan controller -> service / entitas
+KontrolAutentikasi ..> Warga
+KontrolAutentikasi ..> Admin
+KontrolAutentikasi ..> PenilikJalan
+Auth ..> KontrolAutentikasi : login
+BatasLogin ..> KontrolAutentikasi : membatasi login gagal
+KontrolPelaporan ..> AIService
+KontrolPelaporan ..> Deduplikasi
+KontrolPelaporan ..> RiskScoring
+KontrolPelaporan ..> Penyimpanan
+KontrolPelaporan ..> AlurStatus : kirim_notifikasi
+KontrolVerifikasi ..> AlurStatus
+KontrolPenugasan ..> AlurStatus
+KontrolInspeksi ..> AlurStatus
+KontrolInspeksi ..> RiskScoring
+KontrolInspeksi ..> KontrolPelaporan : temuan baru
+KontrolPenanganan ..> AlurStatus
+KontrolLacak ..> AlurStatus : tahapan_linimasa
+KontrolLacak ..> Rating
+KontrolMasterData ..> Wilayah
+KontrolMasterData ..> PenilikJalan
+KontrolDashboard ..> WorkOrder
+KontrolNotifikasi ..> Notifikasi
+KontrolLaporanKinerja ..> RiwayatStatus
+KontrolLaporanKinerja ..> WorkOrder
+AlurStatus ..> RiwayatStatus
+AlurStatus ..> Notifikasi
 @enduml

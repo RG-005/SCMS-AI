@@ -1,23 +1,40 @@
 @startuml
-title Activity Diagram - UC-H: Melihat Dashboard Prioritas Infrastruktur
-
-|Admin|
+title Activity Diagram - UC-H: Dashboard Prioritas & Peta GIS
+|Staf (Admin / Kepala Bidang / Penilik Jalan)|
 start
-:Membuka halaman Dashboard;
+:Membuka menu "Dashboard Prioritas" (/Dashboard);
+:Opsional: memilih filter Wilayah, Status, Kategori lalu "Terapkan";
 
-|Sistem|
-:Menampilkan peta sebaran kerusakan dengan gradasi warna sesuai severity;
-:Menampilkan ringkasan zona risiko dan daftar tiket terurut berdasarkan prioritas;
-
-|Admin|
-:Menerapkan filter (kategori, status, wilayah) via Map Legend & Filters;
-
-|Sistem|
-if (Ada data sesuai filter?) then (Tidak)
-  :Menampilkan pesan "Tidak ada laporan sesuai filter";
+|Sistem (SCMS-AI)|
+if (Peran Penilik Jalan?) then (Ya)
+  :Membatasi tiket ke wilayah rayon penilik\n(filter wilayah diabaikan);
+else (Admin / Kepala Bidang)
+  :Memakai filter yang dipilih (atau semua tiket);
+endif
+:Mengambil tiket sesuai filter, diurutkan dari Risk Score tertinggi;
+if (Ada tiket?) then (Tidak)
+  :Menampilkan "Tidak ada laporan sesuai filter" beserta filter aktif;
   stop
 else (Ya)
-  :Menampilkan hasil sesuai filter pada peta dan daftar tiket;
-  stop
 endif
+:Menghitung kartu KPI dari tiket yang sama dengan tabel\n(total, aktif, urgent, dalam penanganan, belum ditangani,\npersentase selesai; Ditutup tidak dihitung aktif maupun selesai);
+:Menyusun ringkasan zona risiko per wilayah (tiket aktif, skor tertinggi);
+:Menampilkan marker peta untuk tiket berkoordinat\n(merah Urgent, oranye Tinggi, amber Borderline, hijau Rendah/Selesai,\nabu-abu Ditutup);
+:Menampilkan tabel antrean prioritas;
+
+|Staf (Admin / Kepala Bidang / Penilik Jalan)|
+if (Aksi?) then (Admin: "Setujui" pada tiket Dilaporkan berskor jelas)
+  |Sistem (SCMS-AI)|
+  if (Tiket Dilaporkan, bukan skor ambigu (4,0-5,9)\ndan bukan perlu tinjauan manual?) then (Ya)
+    :Mengubah status menjadi Disetujui (riwayat + notifikasi warga);
+    :Menampilkan "Tiket X berhasil diubah menjadi Disetujui\nmelalui Aksi Cepat Dashboard.";
+  else (Tidak)
+    :Menampilkan "Tiket X tidak diubah (status saat ini: ...). <alasan>"\n(tiket ambigu diputuskan di halaman Verifikasi);
+  endif
+elseif (Penilik: "Buka Tugas Lapangan" pada tiket yang ditugaskan kepadanya) then
+  :Membuka /TugasLapangan/{id};
+else (Admin / Kabid: buka detail tiket)
+  :Membuka halaman Work Order / Verifikasi tiket;
+endif
+stop
 @enduml

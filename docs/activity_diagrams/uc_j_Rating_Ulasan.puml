@@ -1,29 +1,43 @@
 @startuml
-title Activity Diagram - UC-J: Sistem Rating & Ulasan Penanganan oleh Warga
+title Activity Diagram - UC-J: Memberi Rating & Ulasan
 |Warga|
 start
-:Membuka halaman detail laporan yang telah berstatus "Selesai";
+:Membuka laporan di halaman Lacak (/lacak?id=<ID>);
 
 |Sistem (SCMS-AI)|
-:Memeriksa apakah laporan sudah pernah diberi rating;
-if (Sudah Ada Rating?) then (Ya)
-  :Menampilkan nilai rating dan ulasan yang telah diberikan;
+if (Status tiket?) then (Ditutup)
+  :Menampilkan "Tiket ini Ditutup tanpa perbaikan\nsehingga tidak dapat dinilai." (#ratingTidakTersedia);
+  stop
+elseif (Belum Selesai) then
+  :Menampilkan "Rating dapat diberikan setelah status laporan Selesai.";
+  stop
+else (Selesai)
+endif
+if (Warga sudah menilai laporan ini\natau tiket yang sama lewat laporan lain?) then (Ya)
+  :Menampilkan rating yang tersimpan (#ratingTersimpan)\natau rating tiket dari laporan lain (#ratingTiketSudahAda);
   stop
 else (Belum)
-  :Menampilkan form Rating (1-5 Bintang) & Kolom Ulasan Kepuasan;
 endif
+:Menampilkan form rating (#formRating);
 
 |Warga|
-:Memilih bintang rating (1-5) dan menulis komentar ulasan atas hasil perbaikan jalan;
-:Klik tombol "Kirim Ulasan";
+:Memilih bintang 1-5;
+:Mengisi ulasan (opsional);
+:Klik "Kirim Ulasan";
 
 |Sistem (SCMS-AI)|
-:Memvalidasi input skor bintang (wajib dipilih 1-5);
-if (Skor Bintang Dipilih?) then (Tidak)
-  :Menampilkan peringatan "Silakan pilih bintang rating terlebih dahulu";
+:Memeriksa ulang di backend: laporan milik warga, tiket tidak Ditutup,\ntiket Selesai, belum ada rating (laporan maupun tiket);
+if (Lolos semua pemeriksaan?) then (Tidak)
+  :Menampilkan pesan penolakan yang sesuai\n(form tetap, komentar dipertahankan);
+  stop
 else (Ya)
-  :Menyimpan penilaian ke tabel Rating;
-  :Menampilkan pesan "Terima kasih atas ulasan dan penilaian Anda";
 endif
-stop
+if (Bintang 1-5 dipilih?) then (Tidak)
+  :Menampilkan pesan peringatan\n"Silakan pilih bintang rating (1-5) terlebih dahulu";
+  stop
+else (Ya)
+  :Menyimpan Rating (bintang, ulasan maks. 1000 karakter, tanggal);
+  :Kembali ke /lacak?id=<ID> dengan pesan\n"Terima kasih atas ulasan dan penilaian Anda";
+  stop
+endif
 @enduml

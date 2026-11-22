@@ -1,71 +1,129 @@
 @startuml
-title UC-K - Melakukan Login
+title UC-K - Melakukan Login, Sesi Berversi & Logout (C-01, C-03, C-04)
 
 actor "User / Petugas Dinas" as User
 boundary HalamanLogin
+control "app/main.py\n(rute & middleware)" as Rute
+control "batas_login\n(app/batas_login.py)" as Batas
 control KontrolAutentikasi
+control "app/auth.py" as Auth
 entity Admin
 entity PenilikJalan
 entity Warga
-entity Sesi
+entity "Sesi\n(cookie scms_session)" as Sesi
 
-User -> HalamanLogin : 1. buka /Login
+== Login ==
+User -> HalamanLogin : 1. buka GET /Login
 activate HalamanLogin
 User -> HalamanLogin : 2. isi identifier (email / no. HP / NIK / NIP) + password, klik "Masuk"
-HalamanLogin -> KontrolAutentikasi : 2.1 autentikasi(identifier, password)
-activate KontrolAutentikasi
+HalamanLogin -> Rute : 2.1 POST /Login (identifier, password, next)
+activate Rute
 
-note right of KontrolAutentikasi
-  Akun staf dicocokkan lebih dulu,
-  sehingga akun Warga tidak bisa
-  menutupi email instansi.
+note right of Rute
+  Middleware cek asal (C-04): POST dengan header
+  Origin (atau Referer) ber-host lain -> 403.
+  Tanpa Origin dan Referer -> diizinkan.
 end note
 
-KontrolAutentikasi -> Admin : 2.1.1 cari email_admin (tanpa beda huruf besar/kecil)
-activate Admin
-Admin --> KontrolAutentikasi : 2.1.2 akun Admin / Kepala Bidang atau kosong
-deactivate Admin
+Rute -> Batas : 2.2 ip_klien(request)\n(CF-Connecting-IP -> X-Forwarded-For pertama -> soket)
+Rute -> Batas : 2.3 menit_terkunci(identifier, ip)
+activate Batas
+Batas --> Rute : None atau N menit
+deactivate Batas
 
-opt Bukan Admin
-    KontrolAutentikasi -> PenilikJalan : 2.1.3 cari email_penilik atau NIP 18 digit
-    activate PenilikJalan
-    PenilikJalan --> KontrolAutentikasi : 2.1.4 akun Penilik Jalan atau kosong
-    deactivate PenilikJalan
-end
+alt Terkunci (>= SCMS_LOGIN_MAKS_GAGAL gagal per identifier, bawaan 5,\natau >= SCMS_LOGIN_MAKS_GAGAL_IP per IP, bawaan 20, dalam SCMS_LOGIN_JEDA_MENIT = 15 menit)
+    Rute --> HalamanLogin : 2.4 HTTP 429 "Terlalu banyak percobaan. Coba lagi dalam N menit."\n(password tidak diperiksa)
+else Belum terkunci
+    Rute -> KontrolAutentikasi : 2.4 autentikasi(identifier, password)
+    activate KontrolAutentikasi
+    KontrolAutentikasi -> KontrolAutentikasi : 2.4.1 cari_akun(identifier)
 
-opt Bukan Admin / Penilik Jalan
-    KontrolAutentikasi -> Warga : 2.1.5 cari email, no_hp, atau NIK
-    activate Warga
-    Warga --> KontrolAutentikasi : 2.1.6 akun Warga atau kosong
-    deactivate Warga
-end
+    note right of KontrolAutentikasi
+      Akun staf dicocokkan lebih dulu,
+      sehingga akun Warga tidak bisa
+      menutupi email instansi.
+    end note
 
-alt Akun tidak ditemukan
-    KontrolAutentikasi --> HalamanLogin : 2.2 "Akun tidak ditemukan"
-else Password salah (bcrypt)
-    KontrolAutentikasi --> HalamanLogin : 2.2 "Email/nomor HP atau password salah"
-else Akun tidak aktif
-    KontrolAutentikasi --> HalamanLogin : 2.2 "Akun Anda tidak aktif, silakan hubungi administrator"
-else Login berhasil
-    KontrolAutentikasi --> HalamanLogin : 2.2 peran + redirect_url
-end
-deactivate KontrolAutentikasi
+    KontrolAutentikasi -> Admin : 2.4.2 cari email_admin (tanpa beda huruf besar/kecil)
+    activate Admin
+    Admin --> KontrolAutentikasi : akun Admin / Kepala Bidang atau kosong
+    deactivate Admin
+    opt Bukan Admin
+        KontrolAutentikasi -> PenilikJalan : 2.4.3 cari email_penilik atau NIP
+        activate PenilikJalan
+        PenilikJalan --> KontrolAutentikasi : akun Penilik Jalan atau kosong
+        deactivate PenilikJalan
+    end
+    opt Bukan Admin / Penilik Jalan
+        KontrolAutentikasi -> Warga : 2.4.4 cari email, no_hp, atau NIK
+        activate Warga
+        Warga --> KontrolAutentikasi : akun Warga atau kosong
+        deactivate Warga
+    end
 
-alt Gagal
-    HalamanLogin --> User : 2.3 tampilkan pesan kesalahan di form Login
-else Berhasil
-    HalamanLogin -> Sesi : 2.3 simpan_login() (cookie scms_session)
-    activate Sesi
-    Sesi --> HalamanLogin : 2.3.1 sesi tersimpan
-    deactivate Sesi
-    alt Warga
-        HalamanLogin --> User : 2.4 redirect ke /Beranda
-    else Penilik Jalan
-        HalamanLogin --> User : 2.4 redirect ke /TugasLapangan
-    else Admin / Kepala Bidang
-        HalamanLogin --> User : 2.4 redirect ke /Dashboard
+    alt Akun tidak ditemukan
+        KontrolAutentikasi --> Rute : "Akun tidak ditemukan"
+    else Password salah (bcrypt)
+        KontrolAutentikasi --> Rute : "Email/nomor HP atau password salah"
+    else Akun tidak aktif
+        KontrolAutentikasi --> Rute : "Akun Anda tidak aktif, silakan hubungi administrator"
+    else Login berhasil
+        KontrolAutentikasi --> Rute : id, peran, versi_sesi, redirect_url
+    end
+    deactivate KontrolAutentikasi
+
+    alt Gagal
+        Rute -> Batas : 2.5 catat_gagal(identifier, ip)
+        Rute --> HalamanLogin : 2.6 form Login + pesan kesalahan
+    else Berhasil
+        Rute -> Batas : 2.5 reset_identifier(identifier)
+        Rute -> Auth : 2.6 simpan_login(request, hasil)
+        activate Auth
+        Auth -> Sesi : 2.6.1 sesi.clear(); pengguna = {id, peran, versi}\n(tanpa nama / email)
+        deactivate Auth
+        Rute --> HalamanLogin : 2.7 303 ke "next" (bila aman & sesuai peran)\natau /Beranda | /TugasLapangan | /Dashboard
     end
 end
-
+deactivate Rute
+HalamanLogin --> User : 3. halaman tujuan / pesan
 deactivate HalamanLogin
+
+== Setiap request berikutnya ==
+User -> Rute : 4. GET/POST halaman terlindungi (cookie scms_session)
+activate Rute
+Rute -> Auth : 4.1 wajib_peran(...) -> pengguna_saat_ini(request)
+activate Auth
+Auth -> Auth : 4.2 muat_akun(sesi)
+note right of Auth
+  Sesi ditolak bila: peran tidak dikenal, akun tidak ada /
+  tidak aktif, status Kepala Bidang berubah, atau
+  versi cookie != akun.versi_sesi (juga cookie lama tanpa versi).
+  Nama & email diambil dari database untuk template,
+  tidak pernah ditulis ke cookie.
+end note
+alt Sesi sah
+    Auth --> Rute : pengguna {id, peran, versi, nama, email}
+    Rute --> User : 4.3 halaman (403 bila peran tidak berhak)
+else Sesi ditolak / tidak ada
+    Auth -> Sesi : keluar(request) (sesi dikosongkan)
+    Auth --> Rute : LoginDiperlukan
+    Rute --> User : 4.3 303 ke /Login?next=...
+end
+deactivate Auth
+deactivate Rute
+
+== Logout ==
+User -> Rute : 5. GET /Logout (tautan lama / diketik)
+activate Rute
+Rute --> User : 5.1 halaman konfirmasi "Keluar dari SCMS-AI?"\n(sesi TIDAK dihapus; tanpa login -> 303 /Login)
+deactivate Rute
+User -> Rute : 6. klik tombol "Keluar" (form POST /Logout)
+activate Rute
+Rute -> Auth : 6.1 keluar(request, akhiri_sesi=True)
+activate Auth
+Auth -> Admin : 6.2 akhiri_semua_sesi(): UPDATE versi_sesi = versi_sesi + 1\n(tabel akun sesuai peran: Warga / Admin / PenilikJalan)
+Auth -> Sesi : 6.3 sesi.clear()
+deactivate Auth
+Rute --> User : 6.4 303 ke /Login\n(salinan cookie lama di perangkat mana pun kini ditolak)
+deactivate Rute
 @enduml

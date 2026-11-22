@@ -1,27 +1,53 @@
 @startuml
-title UC-H - Melihat Dashboard Prioritas Infrastruktur
+title Sequence Diagram - UC-H: Dashboard Prioritas & Peta GIS
+actor "Admin / Kepala Bidang /\nPenilik Jalan" as Staf
+boundary "HalamanDashboard\n(dashboard_prioritas.html)" as UI
+control "GET /Dashboard\n(app/main.py, semua staf)" as Rute
+control KontrolDashboard as Ctrl
+control KontrolVerifikasi as Verif
+entity WorkOrder
+entity Wilayah
+entity PenilikJalan
 
-actor Admin
-boundary DashboardAdmin
-control KontrolDashboard
-
-Admin -> DashboardAdmin : 1. buka dashboard
-activate DashboardAdmin
-DashboardAdmin -> KontrolDashboard : 1.1 muatDashboard()
-activate KontrolDashboard
-KontrolDashboard --> DashboardAdmin : 1.1.1 peta + antrean prioritas
-deactivate KontrolDashboard
-
-Admin -> DashboardAdmin : 2. terapkan filter
-DashboardAdmin -> KontrolDashboard : 2.1 filter(kategori, status, wilayah)
-activate KontrolDashboard
-
-alt Filter ada data
-    KontrolDashboard --> DashboardAdmin : 2.2 hasil filter
-else Kosong
-    KontrolDashboard --> DashboardAdmin : 2.2 "Tidak ada laporan sesuai filter"
+Staf -> UI : buka /Dashboard (opsional: filter wilayah, status, kategori)
+activate UI
+UI -> Rute : GET /Dashboard?wilayah&status&kategori
+activate Rute
+alt Penilik Jalan
+    Rute -> PenilikJalan : wilayah_penilik(pengguna)
+    Rute -> Ctrl : filter_dashboard(wilayah = wilayah penilik, status, kategori)\n(filter wilayah dari URL diabaikan)
+else Admin / Kabid tanpa filter
+    Rute -> Ctrl : muat_dashboard()
+else Admin / Kabid dengan filter
+    Rute -> Ctrl : filter_dashboard(wilayah, status, kategori)
 end
+activate Ctrl
+Ctrl -> Wilayah : cari wilayah (nama / ID)
+alt Wilayah tidak dikenal atau tidak ada tiket cocok
+    Ctrl --> Rute : daftar kosong + "Tidak ada laporan sesuai filter"
+else Ada tiket
+    Ctrl -> WorkOrder : tiket sesuai filter, urut risk_score tertinggi
+    Ctrl -> Ctrl : warna_marker() per tiket (Urgent / Tinggi / Borderline / Rendah,\nhijau Selesai, abu-abu Ditutup); ambigu = skor Borderline atau perlu_tinjauan_manual
+    Ctrl --> Rute : daftar_tiket
+end
+deactivate Ctrl
+Rute -> Ctrl : ringkasan_kpi(tiket yang tampil)\n(total, aktif, urgent, penanganan, belum_ditangani, selesai, ditutup, persen_selesai)
+Rute -> Rute : ringkasan per wilayah (tiket aktif & skor tertinggi),\ntitik peta (hanya tiket berkoordinat), tiket_saya (Penilik)
+Rute --> UI : render
+deactivate Rute
+UI --> Staf : kartu KPI, peta Leaflet #mapSurabaya, ringkasan zona,\ntabel antrean (tr[data-tiket]); Penilik: tombol "Buka Tugas Lapangan" untuk tiketnya
 
-deactivate KontrolDashboard
-deactivate DashboardAdmin
+opt Admin: Aksi Cepat "Setujui" (hanya tiket Dilaporkan berskor jelas)
+    Staf -> UI : klik "Setujui"
+    UI -> Rute : POST /Dashboard/{id}/quick-approve (selain Admin 403; tiket tidak ada 404)
+    activate Rute
+    Rute -> Verif : alasan_ditolak(wo, AKSI_SETUJUI); setujui_tiket(id, email_admin)
+    activate Verif
+    Verif -> WorkOrder : ubah_status(Dilaporkan -> Disetujui) bila diizinkan
+    Verif --> Rute : tiket
+    deactivate Verif
+    Rute --> UI : 303 ke /Dashboard?pesan_aksi=\n"Tiket X berhasil diubah menjadi Disetujui melalui Aksi Cepat Dashboard."\natau "Tiket X tidak diubah (status saat ini: ...). <alasan>"
+    deactivate Rute
+end
+deactivate UI
 @enduml

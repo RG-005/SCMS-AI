@@ -1,7 +1,7 @@
 # Product Requirements Document (prd.md)
 # SCMS-AI: Smart Complaint Management System — Dinas PUPR Kota Surabaya
 
-**Versi Dokumen:** 3.0 (Sprint 1 & Sprint 2 Implemented — Sprint 3 Direncanakan, lihat [bagian 5](#5-sprint-3--rencana))  
+**Versi Dokumen:** 3.1 (Sprint 1, 2 & 3 Implemented — lihat [bagian 5](#5-sprint-3--implementasi); hardening keamanan pasca-Sprint 3 di [5.9 no. 14](#59-keputusan-tim))  
 **Organisasi / Tim:** Kelompok 7 (Kelas I3) — Rizaldi Rizki Saputra (187241005) & Alfarrel Yuri Ramadhani (187241109)  
 **Target Instansi:** Dinas Sumber Daya Air dan Bina Marga (DSDABM / PUPR) Pemerintah Kota Surabaya  
 
@@ -32,7 +32,7 @@ SCMS-AI adalah platform web terintegrasi berbasis Artificial Intelligence (Compu
     jika `kategori_pilihan` warga **sama** dengan rekomendasi AI, `S` = severity dari AI (kategori + luas area kerusakan).
     Jika **berbeda**, `S` = nilai dasar kategori pilihan (`VisiYolo.BASE_SEVERITY`: Jalan Berlubang `7.0`, Jalan Amblas `7.5`, Retak Permukaan `4.5`),
     bukan severity AI, dan halaman lapor menampilkan "Kategori diubah dari rekomendasi AI (...). Severity memakai nilai dasar kategori dan akan ditinjau petugas."
-* **BR-3 (Deduplikasi Spasial-Semantik Dua Tingkat — `app/services/deduplikasi.py`):** Kandidat hanya WorkOrder aktif (belum `Selesai`) dengan kategori kerusakan yang sama. Laporan baru digabungkan ke tiket kandidat bila:
+* **BR-3 (Deduplikasi Spasial-Semantik Dua Tingkat — `app/services/deduplikasi.py`):** Kandidat hanya WorkOrder aktif (bukan `Selesai` maupun `Ditutup`) dengan kategori kerusakan yang sama. Laporan baru digabungkan ke tiket kandidat bila:
   * **Tingkat 1 — jarak <= 15 m (`RADIUS_PASTI_SAMA_M`):** langsung dianggap duplikat **tanpa** syarat kemiripan deskripsi (dasar: `"jarak <= 15 m"`).
   * **Tingkat 2 — jarak > 15 m s.d. <= 50 m (`RADIUS_DUPLIKAT_M`), atau tanpa koordinat tetapi nama jalan + nomor sama:** wajib kemiripan deskripsi >= ambang backend NLP (leksikal 0,35; sentence-transformers 0,60) (dasar: `"jarak + kemiripan deskripsi"`).
   * **Lebih dari 50 m:** bukan duplikat.
@@ -50,8 +50,8 @@ SCMS-AI adalah platform web terintegrasi berbasis Artificial Intelligence (Compu
 * **BR-6 (Penugasan & Inspeksi — UC-G / UC-E):** Penilik Jalan **hanya** dapat menginspeksi tiket yang ditugaskan kepadanya: status `Ditugaskan`, atau `Menunggu Inspeksi` dengan `id_penilik` = dirinya. Tiket `Disetujui` yang belum ditugaskan tidak tampil sebagai tugas inspeksi dan POST inspeksinya ditolak; Admin wajib menugaskannya lebih dulu (UC-G). Identitas pemilik tugas dibandingkan berdasarkan ID akun, bukan nama.
 * **BR-7 (Rating — UC-J / UC-L):** Satu rating per (warga, tiket). Bila dua laporan warga yang sama digabung ke satu tiket, rating kedua ditolak dengan pesan "Tiket penanganan ini sudah Anda beri penilaian melalui laporan ...". Rata-rata rating di Laporan Kinerja dihitung dari satu rating per warga unik (data lama ganda: hanya rating pertama yang dihitung).
 
-## 4. Cakupan Skenario BDD (31 Skenario di `tests/features/`)
-*Skenario Sprint 3 (`@sprint3`, belum dihubungkan ke step definition) dirangkum di [5.7](#57-skenario-bdd-sprint-3-sprint3).*
+## 4. Cakupan Skenario BDD (31 Skenario Sprint 1 & 2 di `tests/features/`)
+*Skenario Sprint 3 (`@sprint3`) sudah dihubungkan ke step definition dan lulus; dirangkum di [5.7](#57-skenario-bdd-sprint-3-sprint3). Seluruhnya 63 kasus uji BDD (Sprint 1 & 2: 31, Sprint 3: 32 karena satu Scenario Outline punya 2 contoh).*
 ### Sprint 1 (17 Skenario)
 * **UC-K (`uc_k_login.feature` — 5 skenario):** Login Warga, Admin, Penilik Jalan, kredensial salah, dan form kosong.
 * **UC-A (`uc_a_buat_laporan.feature` — 4 skenario):** Laporan baru terbit tiket, deduplikasi otomatis, penolakan format/ukuran foto, dan penolakan objek bukan jalan *(skenario terakhir direvisi Sprint 3 menjadi "Perlu tinjauan manual" — lihat [5.3 BR-1](#53-aturan-bisnis-baru--berubah-sprint-3))*.
@@ -72,8 +72,8 @@ SCMS-AI adalah platform web terintegrasi berbasis Artificial Intelligence (Compu
     (b) untuk tiket aktif: **umur tiket** (hari sejak laporan masuk) dan **tahap saat ini**, diurutkan dari yang paling lama.
   * Ekspor CSV per wilayah dan per tiket memuat durasi per tahap dan umur tiket (tanpa kolom SLA); proteksi formula CSV tetap berlaku. Kepatuhan SLA, "Aktif Melewati SLA", dan status SLA per tiket dihapus.
 
-## 5. Sprint 3 — Rencana
-> **Status:** perencanaan (PRD + skenario BDD ditulis lebih dulu, sebelum kode). Belum ada perubahan pada `app/`, `database/`, maupun step definition. Bagian 1–4 di atas tetap menggambarkan aplikasi yang sudah berjalan (Sprint 1 & 2).
+## 5. Sprint 3 — Implementasi
+> **Status:** terimplementasi. PRD dan skenario BDD `@sprint3` ditulis lebih dulu (sebelum kode), lalu seluruh backlog dan carry-over dikerjakan per bagian (1A, 1B, 2A, 2B, 4, 5, 6); BR-8 (bagian 3) sempat dibuat lalu dihapus atas keputusan tim. Bagian 1–4 di atas menggambarkan aturan dasar Sprint 1 & 2; perubahan Sprint 3 atas aturan itu ada di 5.3.
 > **Revisi asisten dosen tetap berlaku:** tidak ada target waktu penyelesaian di fitur Sprint 3 mana pun (termasuk grafik kinerja dan jadwal kunjungan lanjutan, yang hanya berupa tanggal rencana kerja, bukan tenggat).
 
 ### 5.1 Tujuan Sprint 3
@@ -86,19 +86,19 @@ SCMS-AI adalah platform web terintegrasi berbasis Artificial Intelligence (Compu
 ### 5.2 Fitur per Backlog & Penanggung Jawab
 | # | Backlog Sprint 3 | Penanggung Jawab | Cakupan | Feature BDD |
 | :--- | :--- | :--- | :--- | :--- |
-| 1 | Memperbarui Status Perbaikan dan Notifikasi Otomatis | Rizaldi | Status akhir `Ditutup` (BR-4, BR-5). (Kirim Ulang notifikasi BR-8 dihapus atas keputusan tim.) | `uc_b_tutup_tiket.feature` |
-| 2 | Menerima Notifikasi Perubahan Status Laporan (push notification) | Alfarrel | Polling ringan `GET /api/notifikasi/belum-dibaca` (bawaan tiap 15 detik), badge `#badgeNotif` diperbarui tanpa refresh, toast di halaman, Notification API browser bila warga memberi izin. **Tanpa** Web Push/VAPID/service worker. | `uc_i_push_notifikasi.feature` |
-| 3 | Memantau Laporan Ringkasan Kinerja (grafik) | Alfarrel | Chart.js di `/laporan-kinerja`: tren tiket masuk vs selesai per minggu, distribusi prioritas, rata-rata durasi per tahap, rekap per wilayah. Mengikuti filter periode/wilayah; periode kosong = tanpa grafik dengan pesan yang sudah ada. Angka grafik diambil dari struktur data yang sama dengan tabel. | `uc_l_grafik_kinerja.feature` |
-| 4 | Integrasi dan Pengujian BDD Seluruh Fitur | Rizaldi & Alfarrel | Menghubungkan 8 feature `@sprint3` ke step definition; 350 tes yang ada tetap hijau; laporan pengujian (`generate_bdd_report.py`) mendapat kelompok Sprint 3. | semua feature `@sprint3` |
+| 1 | Memperbarui Status Perbaikan dan Notifikasi Otomatis | Rizaldi | ✅ Status akhir `Ditutup` (BR-4, BR-5). Fitur **Notifikasi Gagal / Kirim Ulang (BR-8)** sempat diimplementasikan lalu **dihapus atas keputusan tim**; kolom `notifikasi.status_kirim`, `jumlah_percobaan`, dan `waktu_percobaan_terakhir` tersisa sebagai kolom usang (*deprecated*: tidak ditulis/dibaca aplikasi, tidak di-drop). | `uc_b_tutup_tiket.feature` |
+| 2 | Menerima Notifikasi Perubahan Status Laporan (push notification) | Alfarrel | ✅ Polling ringan `GET /api/notifikasi/belum-dibaca` (bawaan tiap 15 detik), badge `#badgeNotif` diperbarui tanpa refresh, toast di halaman, Notification API browser bila warga memberi izin. **Tanpa** Web Push/VAPID/service worker. | `uc_i_push_notifikasi.feature` |
+| 3 | Memantau Laporan Ringkasan Kinerja (grafik) | Alfarrel | ✅ Chart.js 4.4.1 (dilayani lokal dari `app/static/js/chart.umd.js`) di `/laporan-kinerja`: tren tiket masuk vs selesai per minggu, distribusi prioritas, rata-rata durasi per tahap, rekap per wilayah. Mengikuti filter periode/wilayah; periode kosong = tanpa grafik dengan pesan yang sudah ada. Angka grafik diambil dari struktur data yang sama dengan tabel. | `uc_l_grafik_kinerja.feature` |
+| 4 | Integrasi dan Pengujian BDD Seluruh Fitur | Rizaldi & Alfarrel | ✅ 7 feature `@sprint3` yang tersisa (setelah `uc_i_kirim_ulang_notifikasi.feature` dihapus bersama BR-8) terhubung ke step definition dan lulus. Seluruh koleksi saat ini **708 tes**: 641 uji cepat, 63 kasus uji BDD, 4 E2E Selenium; 1 uji migrasi PostgreSQL dilewati tanpa `SCMS_TEST_POSTGRES_URL`. Laporan pengujian di `reports/` (`dokumentasi_testing_scms.html`, `cucumber_bdd_report.html` yang dikelompokkan Sprint 1/2/3 oleh `generate_bdd_report.py`, `selenium_e2e_report.html`, `cucumber.json`). | semua feature `@sprint3` |
 
-**Carry-over subtask Sprint 2** — ⚠️ *CARRY-OVER: direncanakan di Sprint 2 tetapi belum ada di aplikasi.* Penanggung jawab mengikuti pemilik modul terkait (disetujui tim):
+**Carry-over subtask Sprint 2** — ✅ *selesai di Sprint 3.* (Sejarah: keempatnya tercatat di backlog Sprint 2 tetapi belum sempat dibuat, lalu dipindahkan ke Sprint 3.) Penanggung jawab mengikuti pemilik modul terkait (disetujui tim):
 
 | Carry-over | PJ | Cakupan | Feature BDD |
 | :--- | :--- | :--- | :--- |
-| ⚠️ CO-1 Hitung ulang Risk Score setelah inspeksi | Alfarrel | Konfirmasi kategori + tingkat kerusakan di form inspeksi (BR-2) | `uc_e_hitung_ulang_risiko.feature` |
-| ⚠️ CO-2 Temuan baru saat inspeksi | Alfarrel | Tiket baru bersumber "Temuan Penilik" | `uc_e_temuan_baru.feature` |
-| ⚠️ CO-3 Kunjungan lanjutan (kolom `perbaikan.jadwal_lanjutan` yang belum dipakai) | Rizaldi | Perbaikan sementara + jadwal kunjungan lanjutan | `uc_f_kunjungan_lanjutan.feature` |
-| ⚠️ CO-4 Keputusan foto tanpa deteksi AI | Rizaldi (UC-A) & Alfarrel (UC-B) | Laporan "Perlu tinjauan manual" (BR-1, BR-5) | `uc_a_tinjauan_manual.feature` |
+| ✅ CO-1 Hitung ulang Risk Score setelah inspeksi (selesai di Sprint 3, Bagian 1A/1B) | Alfarrel | Konfirmasi kategori + tingkat kerusakan di form inspeksi (BR-2) | `uc_e_hitung_ulang_risiko.feature` |
+| ✅ CO-2 Temuan baru saat inspeksi (selesai di Sprint 3, Bagian 2A) | Alfarrel | Tiket baru bersumber "Temuan Penilik" | `uc_e_temuan_baru.feature` |
+| ✅ CO-3 Kunjungan lanjutan (kolom `perbaikan.jadwal_lanjutan` kini dipakai; selesai di Sprint 3, Bagian 2B) | Rizaldi | Perbaikan sementara + jadwal kunjungan lanjutan | `uc_f_kunjungan_lanjutan.feature` |
+| ✅ CO-4 Keputusan foto tanpa deteksi AI (selesai di Sprint 3, Bagian 1B) | Rizaldi (UC-A) & Alfarrel (UC-B) | Laporan "Perlu tinjauan manual" (BR-1, BR-5) | `uc_a_tinjauan_manual.feature` |
 
 ### 5.3 Aturan Bisnis Baru / Berubah (Sprint 3)
 * **BR-1 (direvisi Sprint 3) — AI tidak pernah menolak laporan:** Validasi berkas tidak berubah: hanya berkas yang bukan JPEG/PNG asli (diperiksa via Pillow) atau > 10 MB yang ditolak ("Format harus JPG/PNG dan ukuran maksimal 10MB"). Di **kedua mode AI** (`simulasi` dan `yolov8`), foto valid yang **tidak terdeteksi kerusakannya** atau **tampak bukan jalan** **tidak ditolak**: laporan diterima dengan label **"Perlu tinjauan manual"**, kategori dipilih warga sendiri, dan `S` = nilai dasar kategori pilihan (`VisiYolo.BASE_SEVERITY`, sama seperti aturan ganti kategori di BR-2). Keputusan menolak dipindahkan ke manusia: Admin dapat **"Tolak"** saat verifikasi dengan alasan **"Laporan tidak valid"** (→ `Ditutup`, BR-4/BR-5). Backend simulasi: kata kunci bukan-jalan (`kucing`, `selfie`, dst.) dan nama berkas berisi `tanpa_deteksi` sama-sama menghasilkan "Perlu tinjauan manual". Tidak ada kotak deteksi yang dibuat-buat (`kotak_deteksi` kosong).
@@ -114,7 +114,7 @@ SCMS-AI adalah platform web terintegrasi berbasis Artificial Intelligence (Compu
 * **Temuan baru (UC-E, CO-2):** saat inspeksi, penilik dapat mencatat kerusakan lain di sekitar lokasi (foto **wajib**, kategori, deskripsi, titik peta). Sistem membuat tiket baru bersumber **"Temuan Penilik"** berstatus `Dilaporkan` yang masuk antrean Verifikasi seperti biasa dan **tetap melewati deduplikasi BR-3** (bila digabung, tidak ada tiket baru). Temuan tidak mengubah status tiket yang sedang diinspeksi dan tidak menambah `exposure_count` (exposure tetap dihitung dari warga berbeda). Penyimpanan: `laporan.id_warga` menjadi **nullable**, kolom baru `laporan.sumber` (`"Warga"` / `"Temuan Penilik"`) dan `laporan.id_penilik_pencatat`. **Notifikasi hanya ke warga pelapor:** tiket temuan murni tidak mengirim notifikasi warga; bila kemudian laporan warga digabung (BR-3) ke tiket temuan, warga itu menerima notifikasi "Laporan digabungkan" dan notifikasi perubahan status berikutnya (aturan satu notifikasi per warga unik di BR-4 tetap berlaku).
 
 ### 5.4 Ringkasan Carry-over Sprint 2
-⚠️ Empat subtask berikut tercatat di backlog Sprint 2 tetapi belum diimplementasikan; masuk Sprint 3 sebagai CO-1 s.d. CO-4 (lihat 5.2 & 5.3): hitung ulang risk score setelah inspeksi, temuan baru saat inspeksi, kunjungan lanjutan (`jadwal_lanjutan`), dan keputusan foto tanpa deteksi AI.
+✅ Selesai di Sprint 3. Empat subtask yang tercatat di backlog Sprint 2 tetapi belum sempat dibuat pada sprint itu dikerjakan di Sprint 3 sebagai CO-1 s.d. CO-4 (lihat 5.2 & 5.3): hitung ulang risk score setelah inspeksi, temuan baru saat inspeksi, kunjungan lanjutan (`jadwal_lanjutan`), dan keputusan foto tanpa deteksi AI.
 
 ### 5.5 Diagram Alur Status (Sprint 3)
 ```mermaid
@@ -152,12 +152,14 @@ stateDiagram-v2
 | Perbaikan sementara, jadwal & catat kunjungan lanjutan | – | ✅ (form progres Admin) | – | ✅ tiket yang ditugaskan kepadanya |
 | `GET /api/notifikasi/belum-dibaca` (polling badge/toast) | ✅ notifikasinya sendiri | – (403) | – (403) | – (403) |
 | Grafik Laporan Kinerja | – | ✅ | ✅ | – |
+| Halaman Bantuan & Panduan Penggunaan (`GET /bantuan`) | ✅ | ✅ | ✅ | ✅ (semua peran yang login; tanpa login dialihkan ke `/Login`) |
+| Keluar (`POST /Logout`; `GET /Logout` hanya halaman konfirmasi) | ✅ | ✅ | ✅ | ✅ |
 | Membuka halaman Work Order (`GET /work-orders`) | – | ✅ | 👁️ lihat saja | ↪️ dialihkan ke Tugas Lapangan (keputusan tim 5.9 no. 13) |
 
 Tanpa login: halaman dialihkan ke `/Login`; endpoint JSON polling mengembalikan `401` tanpa data.
 
 ### 5.7 Skenario BDD Sprint 3 (`@sprint3`)
-33 skenario di 8 file baru `tests/features/`, ditulis sebelum kode. Skenario dihubungkan ke step definition per bagian implementasi (dengan `@scenario` satu per satu bila sebagian skenario di file yang sama belum dikerjakan); skenario yang belum dihubungkan belum ikut dijalankan `pytest`. Data seed yang dipakai/dibutuhkan ditulis di komentar tiap file.
+Semula 33 skenario di 8 file baru `tests/features/`, ditulis sebelum kode. Setelah `uc_i_kirim_ulang_notifikasi.feature` (4 skenario) dihapus bersama BR-8, tersisa **31 skenario di 7 file**, semuanya sudah dihubungkan ke step definition dan **lulus** (32 kasus uji, karena Scenario Outline rekomendasi tutup punya 2 contoh). Data seed yang dipakai ditulis di komentar tiap file.
 
 | Feature | Skenario | PJ |
 | :--- | :---: | :--- |
@@ -171,14 +173,14 @@ Tanpa login: halaman dialihkan ke `/Login`; endpoint JSON polling mengembalikan 
 | `uc_l_grafik_kinerja.feature` | 4 | Alfarrel — **terimplementasi (Bagian 4):** "Charts show the same numbers as the tables", "Charts follow the region filter", "Closed tickets are shown separately and not counted as completed", "Empty period shows no charts" |
 | `integrasi_alur_penuh.feature` | 2 | Rizaldi & Alfarrel (backlog 4) — **terimplementasi (Bagian 6):** "A citizen report goes from submission to rating", "A rejected report is closed with a reason"; satu tiket melewati semua aktor dan status lewat rute web sungguhan |
 
-### 5.8 Data Seed & Konfigurasi yang Dibutuhkan
+### 5.8 Data Seed & Konfigurasi Sprint 3
 * **Dipakai ulang:** REP-2026-00298/LAP-2026-0002 (Ditugaskan, Budi Santoso, Ibu Sari Rahayu), REP-2026-00341/LAP-2026-0001 (Bpk. Tri Wahyudi; status disiapkan step seperti UC-F/UC-J), data periode Oktober 2026 (5 tiket: Urgent 2, Tinggi 2, Borderline 1; Selesai 1), notifikasi NTF-SEED-0001.
-* **Opsional baru:** REP-2026-00370 / LAP-2026-0004 (`Dilaporkan`, skor jelas, USR-01, Wilayah Gubeng) agar skenario Tolak tidak perlu menyiapkan status langsung.
-* **Konfigurasi baru:** interval polling yang dapat diperkecil saat tes (mis. `SCMS_POLL_NOTIF_DETIK`, bawaan 15), kata kunci simulasi `tanpa_deteksi`.
-* **Kolom baru (via `pastikan_kolom_terbaru()`):** `work_order.alasan_ditutup`, `work_order.severity_ai`; `inspeksi.kategori_terkonfirmasi`, `inspeksi.tingkat_kerusakan`, `inspeksi.severity_lapangan`, `inspeksi.rekomendasi_tutup` (+ alasan); `laporan.id_warga` menjadi nullable, `laporan.sumber`, `laporan.id_penilik_pencatat`, `laporan.perlu_tinjauan_manual`; `perbaikan.perbaikan_sementara`, penanda kunjungan lanjutan tercatat. Kolom usang `work_order.sla_rekomendasi` serta `notifikasi.status_kirim`/`jumlah_percobaan`/`waktu_percobaan_terakhir` (BR-8 dihapus) tidak disentuh.
+* **REP-2026-00370 / LAP-2026-0004** (disebut opsional di komentar `uc_b_tutup_tiket.feature` dan `uc_l_grafik_kinerja.feature`) **tidak ditambahkan** ke `database/seed.py` dan tidak dipakai; skenario Tolak memakai REP-2026-00341 / LAP-2026-0001 yang statusnya disiapkan step definition.
+* **Konfigurasi baru:** interval polling `SCMS_POLL_NOTIF_DETIK` (bawaan 15; tes memakai 1), kata kunci simulasi `tanpa_deteksi`. Pasca-Sprint 3: `SCMS_PRODUKSI` (no. 17) dan `SCMS_LOGIN_MAKS_GAGAL` / `SCMS_LOGIN_MAKS_GAGAL_IP` / `SCMS_LOGIN_JEDA_MENIT` (no. 14).
+* **Kolom baru (via `pastikan_kolom_terbaru()`):** `work_order.alasan_tutup`, `ditutup_oleh`, `tanggal_ditutup`, `severity_ai`, `perlu_tinjauan_manual`; `inspeksi.kategori_terkonfirmasi`, `tingkat_kerusakan`, `severity_lapangan`, `rekomendasi_tutup`, `alasan_rekomendasi`, `keputusan_rekomendasi`, `diputuskan_oleh`; `laporan.id_warga` menjadi nullable, `laporan.sumber`, `id_penilik_pencatat`, `perlu_tinjauan_manual`, `token_kirim` (UNIQUE INDEX, perbaikan kirim ganda); `perbaikan.perbaikan_sementara`, `status_jadwal`, `kunjungan_dicatat_pada`, `catatan_kunjungan`, `foto_kunjungan`; `warga`/`admin`/`penilik_jalan.versi_sesi` (no. 14). Kolom usang `work_order.sla_rekomendasi` serta `notifikasi.status_kirim`/`jumlah_percobaan`/`waktu_percobaan_terakhir` (BR-8 dihapus) tidak disentuh.
 
 ### 5.9 Keputusan Tim
-Jawaban atas pertanyaan terbuka perencanaan Sprint 3 (sudah diterapkan di 5.2–5.8 dan di feature `@sprint3`):
+Jawaban atas pertanyaan terbuka perencanaan Sprint 3 (sudah diterapkan di 5.2–5.8 dan di feature `@sprint3`), ditambah keputusan setelah Sprint 3 (no. 13–17):
 1. **Penomoran:** aturan pengiriman notifikasi memakai **BR-8** (BR-5 tetap Keputusan Verifikasi). *Kemudian dihapus seluruhnya atas keputusan tim (lihat 5.3).*
 2. **PJ carry-over** disetujui: CO-1 & CO-2 Alfarrel, CO-3 Rizaldi, CO-4 Rizaldi (UC-A) & Alfarrel (UC-B).
 3. **Temuan penilik:** `laporan.id_warga` nullable + `laporan.sumber` (`"Warga"` / `"Temuan Penilik"`) + `laporan.id_penilik_pencatat`. Notifikasi hanya ke warga pelapor; tiket temuan murni tidak mengirim notifikasi warga, dan warga yang laporannya kemudian digabung ke tiket temuan menerima notifikasi.
@@ -192,3 +194,12 @@ Jawaban atas pertanyaan terbuka perencanaan Sprint 3 (sudah diterapkan di 5.2–
 11. **Exposure tiket temuan murni (Bagian 2A):** PRD belum menetapkannya. Dipakai **E = 1**: formula BR-2 memakai `ln(E+1)` dengan E minimal 1 (`hitung_risk_score()` memang membulatkan E < 1 menjadi 1), dan temuan penilik dihitung sebagai **satu sumber pengamatan**, setara satu pelapor. Temuan yang **digabung** ke tiket lain tidak menambah exposure. Warga pertama yang kemudian digabung ke tiket temuan menaikkan E menjadi 2 seperti aturan BR-3 biasa (warga berbeda +1).
 12. **Kapan temuan boleh dicatat (Bagian 2A):** PRD 5.6 menyebut "dari tiket yang ditugaskan kepadanya". Dipakai: hanya penilik yang ditugaskan (`id_penilik` = dirinya) pada tiket yang masih dikerjakannya di lapangan, yaitu `Menunggu Inspeksi`, `Ditugaskan`, `Terinspeksi`, atau `Dalam Proses`. Tiket yang belum ditugaskan atau sudah final (`Selesai`/`Ditutup`) tidak menampilkan form dan backend menolaknya.
 13. **Penilik Jalan tidak lagi memakai halaman Work Order (keputusan tim berikutnya):** halaman Work Order (`/work-orders`) adalah halaman kerja Admin; bagi penilik halaman itu hanya baca dan membingungkan (penilik mencari tombol progres di sana, padahal progres ada di Tugas Lapangan). Penilik bekerja dari **Tugas Lapangan**; gambaran wilayahnya tetap ada di **Dashboard Prioritas**. Menu penilik menjadi `Tugas Lapangan` dan `Dashboard Prioritas`. `GET /work-orders` oleh penilik dialihkan (303) ke `/TugasLapangan/{id}` bila `select_ticket` ditugaskan kepadanya (cek akses yang sama dengan Tugas Lapangan: ID akun dan wilayah), selain itu ke `/TugasLapangan`. Di Dashboard, tombol baris antrean mengarah ke `/TugasLapangan/{id}` untuk tiket yang ditugaskan kepadanya dan tidak tampil untuk tiket lain. Semua `POST /work-orders/...` tetap `403` untuk penilik. Admin dan Kepala Bidang tidak berubah.
+14. **Hardening keamanan C-01 s.d. C-04 (pasca-Sprint 3):**
+    * **C-01 sesi berversi:** cookie `scms_session` hanya berisi `id`, `peran`, dan `versi` (tanpa nama/email; nama dan email dibaca dari database). Kolom baru `versi_sesi` (INTEGER NOT NULL DEFAULT 0) di `warga`, `admin`, `penilik_jalan` lewat migrasi ringan. Setiap request menolak sesi bila akun nonaktif, peran berubah, atau versi cookie ≠ `versi_sesi`. Logout dan ganti password menaikkan `versi_sesi`, sehingga salinan cookie lama berhenti berlaku di semua perangkat.
+    * **C-02:** `/docs`, `/redoc`, `/openapi.json` dimatikan (404) bila `SCMS_PRODUKSI=1`.
+    * **C-03 batas login:** maks. 5 login gagal per identifier dan 20 per IP dalam 15 menit (`app/batas_login.py`, di memori, dapat diatur lewat env); saat terkunci halaman login menampilkan "Terlalu banyak percobaan. Coba lagi dalam N menit." dengan HTTP 429. Login sukses mereset hitungan identifier.
+    * **C-04:** POST/PUT/PATCH/DELETE dengan `Origin` (atau `Referer`) ber-host lain ditolak 403; logout hanya lewat `POST /Logout` (tombol "Keluar" berupa form), `GET /Logout` hanya halaman konfirmasi. Semua respons membawa `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`.
+    * **Skrip `python -m database.ganti_password`** (`--identifier` atau `--semua-staf`): password dibaca dengan getpass, minimal 10 karakter, `password123` ditolak, hash bcrypt, dan `versi_sesi` dinaikkan. `password123` hanya untuk lokal/demo (lihat README bagian Keamanan).
+15. **Perbaikan responsif & aksesibilitas + halaman `/bantuan`:** header dan filter responsif di HP/tablet, target sentuh minimal 40 px (`min-h-[40px]`), label form terhubung ke input, petunjuk "Geser tabel ke samping" untuk tabel lebar, label berbahasa Indonesia, dan halaman **Bantuan & Panduan Penggunaan** (`GET /bantuan`) untuk semua peran yang login (ditautkan dari footer).
+16. **Laporan Kinerja dimodernisasi:** kartu KPI berikon, grafik prioritas menjadi doughnut, tabel lebih mudah dibaca, tampilan cetak tetap berfungsi; hanya tampilan yang berubah, logika rekap tetap. Chart.js 4.4.1 **dilayani lokal** dari `app/static/js/chart.umd.js` (disalin dengan `npm run build:vendor`), tanpa CDN; bila gagal dimuat, tabel tetap lengkap.
+17. **`SCMS_PRODUKSI` menyembunyikan alat bantu demo:** bila `1` (server produksi), blok kredensial uji di `/Login`, tombol berkas uji dan "Isi Contoh Deskripsi" di `/lapor`, serta tombol "Simulasi Skenario Filter Kosong" di Dashboard tidak dirender. Bawaan `0` untuk lokal dan pengujian.

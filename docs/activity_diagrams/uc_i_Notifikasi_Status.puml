@@ -1,23 +1,61 @@
 @startuml
 title Activity Diagram - UC-I: Notifikasi Status Laporan
+
 |Sistem (SCMS-AI)|
 start
-:Mendeteksi perubahan status laporan\n(Terverifikasi / Ditolak / Terinspeksi / Diproses / Selesai);
-:Membuat entri baru pada tabel Notifikasi untuk Warga terkait;
+:Status tiket berubah lewat ubah_status() / tutup_tiket()\n(Disetujui, Menunggu Inspeksi, Menunggu Penugasan, Ditugaskan,\nTerinspeksi, Dalam Proses, Selesai, atau Ditutup);
+:Mencatat RiwayatStatus;
+:Memilih satu laporan terbaru per warga pelapor unik\n(laporan "Temuan Penilik" tanpa warga dilewati);
+:Membuat satu Notifikasi in-app per warga (status_baca = False);
+note right
+  Tiket Ditutup: judul "Laporan ditutup",
+  pesan memuat "Ditutup: <alasan>".
+  Juga dibuat saat laporan diterima dan
+  saat laporan digabungkan (BR-3).
+  Tanpa status pengiriman / Kirim Ulang (BR-8 dihapus).
+end note
 
 |Warga|
-:Membuka aplikasi & melihat ikon lonceng notifikasi (badge jumlah belum dibaca);
-:Klik menu "Notifikasi";
+:Membuka halaman Warga (Beranda, Buat Laporan, Lacak, Notifikasi);
 
 |Sistem (SCMS-AI)|
-:Mengambil daftar notifikasi milik Warga diurutkan dari yang terbaru;
-:Menampilkan daftar pesan notifikasi;
+:Merender badge #badgeNotif (jumlah belum dibaca);
+
+repeat
+  :Setiap 15 detik (SCMS_POLL_NOTIF_DETIK) atau saat tab kembali terlihat,\nmemanggil GET /api/notifikasi/belum-dibaca;
+  if (Pengguna login sebagai Warga?) then (Ya)
+    :Mengembalikan jumlah belum dibaca + maks. 5 notifikasi terbaru (JSON);
+    :Memperbarui badge tanpa memuat ulang halaman;
+    if (Ada notifikasi yang belum pernah tampil?) then (Ya)
+      :Menampilkan toast #toastNotif;
+      if (Izin notifikasi browser diberikan?) then (Ya)
+        :Menampilkan notifikasi browser\n"Status laporan <ID> diperbarui";
+      else (Tidak / ditolak / tidak didukung)
+        :Toast saja, tanpa galat;
+      endif
+    else (Tidak)
+    endif
+  else (Tidak: 401 tanpa login / 403 staf)
+    :Polling berhenti;
+    stop
+  endif
+repeat while (Halaman masih terbuka?) is (Ya)
 
 |Warga|
-:Memilih salah satu item notifikasi;
+:Klik menu "Notifikasi" atau tautan "Buka" di toast;
 
 |Sistem (SCMS-AI)|
-:Mengubah status notifikasi menjadi "Sudah Dibaca" (is_read = True);
-:Mengarahkan Warga ke halaman Detail Lacak Laporan terkait;
+:Menampilkan daftar notifikasi milik Warga, terbaru dulu;
+
+|Warga|
+if (Aksi?) then (Klik satu notifikasi)
+  |Sistem (SCMS-AI)|
+  :Menandai notifikasi itu sudah dibaca (status_baca = True);
+  :Mengarahkan ke /lacak?id=<id_laporan>;
+else (Tandai semua dibaca)
+  |Sistem (SCMS-AI)|
+  :Menandai semua notifikasi Warga sudah dibaca;
+  :Kembali ke /notifikasi;
+endif
 stop
 @enduml

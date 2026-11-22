@@ -1,39 +1,48 @@
 @startuml
-title Sequence Diagram - UC-C: Melacak Status Laporan Warga
+title Sequence Diagram - UC-C: Melacak Status Laporan
 actor Warga
-boundary "HalamanLacakLaporan\n(UI)" as UI
-control "KontrolPelaporan" as Ctrl
-entity "Laporan" as Lap
-entity "Inspeksi" as Insp
-entity "WorkOrder" as WO
+boundary "HalamanLacakLaporan\n(lacak_laporan.html)" as UI
+control "GET /lacak?id=\n(app/main.py, hanya Warga)" as Rute
+control KontrolLacak as Ctrl
+control "alur_status.tahapan_linimasa" as Alur
+entity Laporan
+entity WorkOrder
+entity RiwayatStatus
+entity Inspeksi
+entity Perbaikan
+entity Rating
 
-Warga -> UI : Pilih laporan / cari ID Laporan
+Warga -> UI : Buka "Lacak Laporan", isi #cari_id lalu klik #tombolCari\n(atau klik laporan di daftar / notifikasi)
 activate UI
-UI -> Ctrl : get_detail_lacak_laporan(id_laporan)
+UI -> Rute : GET /lacak?id=<id_laporan>
+activate Rute
+Rute -> Ctrl : daftar_laporan_warga(id_warga)
 activate Ctrl
-
-Ctrl -> Lap : query_by_id(id_laporan)
-activate Lap
-Lap --> Ctrl : data_laporan
-deactivate Lap
-
-alt Laporan ditemukan
-    Ctrl -> Insp : query_by_laporan(id_laporan)
-    activate Insp
-    Insp --> Ctrl : data_inspeksi (opsional)
-    deactivate Insp
-
-    Ctrl -> WO : query_by_laporan(id_laporan)
-    activate WO
-    WO --> Ctrl : data_work_order (opsional)
-    deactivate WO
-
-    Ctrl --> UI : return detail_progres_timeline
-    UI --> Warga : Tampilkan timeline status & detail penanganan
-else Laporan tidak ditemukan
-    Ctrl --> UI : return Error "Tiket tidak ditemukan"
-    UI --> Warga : Tampilkan pesan error
+Ctrl -> Laporan : laporan milik warga, terbaru dulu
+Ctrl --> Rute : daftar laporan (selalu ditampilkan)
+Rute -> Ctrl : detail_lacak(id_laporan, id_warga)
+Ctrl -> Laporan : cari id_laporan (trim + huruf besar) DAN id_warga = warga login
+alt Tidak ditemukan / milik warga lain
+    Ctrl --> Rute : success=False, "Nomor tiket laporan tidak ditemukan,\nperiksa kembali ID Laporan Anda"
+else Ditemukan
+    opt Laporan sudah punya tiket
+        Ctrl -> WorkOrder : get(id_work_order)
+        Ctrl -> RiwayatStatus : riwayat tiket (urut waktu)
+        Ctrl -> Inspeksi : inspeksi terakhir tiket (foto survei, temuan)
+        Ctrl -> Perbaikan : bukti perbaikan berstatus Selesai terakhir
+    end
+    Ctrl -> Rating : rating laporan ini;\nbila kosong: rating warga ini pada tiket yang sama (laporan lain yang digabung)
+    Ctrl -> Alur : tahapan_linimasa(status tercapai)\n(Laporan Diterima, Diverifikasi Admin, Survei Lapangan,\nPerbaikan Berjalan, Selesai Diperbaiki)
+    alt Status Ditutup
+        Ctrl -> Ctrl : sisakan tahap yang tercapai + tahap "Ditutup: <alasan>"
+    else Dalam Proses dengan jadwal kunjungan lanjutan aktif
+        Ctrl -> Ctrl : sisipkan "Kunjungan lanjutan dijadwalkan <tgl>"\nsetelah "Perbaikan Berjalan"
+    end
+    Ctrl --> Rute : laporan, tiket, status, riwayat, tahapan, alasan_tutup,\ninspeksi, bukti_selesai, rating, rating_tiket, boleh_rating
 end
 deactivate Ctrl
+Rute --> UI : render lacak_laporan.html
+deactivate Rute
+UI --> Warga : #detailLaporan, #linimasa, #riwayatStatus (WIB), foto Laporan / Survei / Selesai,\n#alasanDitutup bila Ditutup, bagian rating (UC-J), atau pesan "tidak ditemukan"
 deactivate UI
 @enduml

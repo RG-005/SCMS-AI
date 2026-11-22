@@ -1,22 +1,31 @@
 @startuml
-title Activity Diagram - UC-C: Melacak Status Laporan Warga
+title Activity Diagram - UC-C: Melacak Status Laporan
 |Warga|
 start
-:Membuka menu "Riwayat & Lacak Laporan";
-:Memasukkan Nomor Tiket atau memilih dari daftar laporan saya;
+:Membuka menu "Lacak Laporan" (/lacak);
 
 |Sistem (SCMS-AI)|
-:Mencari data laporan berdasarkan ID Laporan / Warga;
-if (Data Laporan Ditemukan?) then (Tidak)
-  :Menampilkan pesan "Nomor tiket tidak ditemukan";
-  stop
-else (Ya)
-  :Mengambil detail laporan, skor AI, foto, dan status terkini;
-  :Mengambil riwayat progres (Inspeksi & Work Order);
-  :Menampilkan halaman detail progres & timeline status laporan;
-endif
+:Menampilkan form "Cari Laporan" dan daftar laporan milik Warga;
 
 |Warga|
-:Melihat status terkini (Pending / Terverifikasi / Diproses / Selesai / Ditolak);
+:Mengisi ID Laporan dan klik "Cari"\n(atau memilih laporan dari daftar / notifikasi);
+
+|Sistem (SCMS-AI)|
+:Mencari laporan berdasarkan ID (huruf besar) milik Warga yang login;
+if (Laporan ditemukan?) then (Tidak / milik warga lain)
+  :Menampilkan pesan "Nomor tiket laporan tidak ditemukan,\nperiksa kembali ID Laporan Anda" (daftar laporan tetap tampil);
+  stop
+else (Ya)
+endif
+:Mengambil tiket, riwayat status, inspeksi terakhir,\nbukti perbaikan Selesai, dan rating;
+:Menyusun linimasa 5 tahap dari status yang pernah dicapai\n(Laporan Diterima, Diverifikasi Admin, Survei Lapangan,\nPerbaikan Berjalan, Selesai Diperbaiki);
+if (Status tiket?) then (Ditutup)
+  :Menyisakan tahap yang tercapai dan menambah tahap\n"Ditutup: <alasan>"; menampilkan alasan penutupan;
+elseif (Dalam Proses + jadwal kunjungan lanjutan aktif) then
+  :Menyisipkan tahap "Kunjungan lanjutan dijadwalkan <tgl>"\nsetelah "Perbaikan Berjalan";
+else (lainnya)
+endif
+:Menampilkan detail laporan, status saat ini\n(Dilaporkan / Disetujui / Menunggu Inspeksi / Menunggu Penugasan / Ditugaskan /\nTerinspeksi / Dalam Proses / Selesai / Ditutup), linimasa, riwayat status (WIB),\nfoto Laporan - Survei - Selesai, dan bagian rating (UC-J);
+note right: Tiket tanpa riwayat menampilkan\n"Belum ada riwayat status."
 stop
 @enduml

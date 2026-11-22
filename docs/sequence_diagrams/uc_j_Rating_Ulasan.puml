@@ -1,38 +1,53 @@
 @startuml
-title Sequence Diagram - UC-J: Sistem Rating & Ulasan Penanganan oleh Warga
+title Sequence Diagram - UC-J: Memberi Rating & Ulasan
 actor Warga
-boundary "HalamanDetailLaporan\n(UI)" as UI
-control "KontrolPelaporan" as Ctrl
-entity "Laporan" as Lap
-entity "Rating" as Rat
+boundary "HalamanLacakLaporan\n(lacak_laporan.html, #formRating)" as UI
+control "POST /lacak/{id_laporan}/rating\n(app/main.py, hanya Warga)" as Rute
+control KontrolLacak as Ctrl
+entity Laporan
+entity WorkOrder
+entity Rating
 
-Warga -> UI : Pilih bintang (1-5), isi ulasan, & klik "Kirim Ulasan"
+Warga -> UI : pilih bintang (label bintang-1..5), isi #komentar (opsional),\nklik #tombolKirimUlasan
 activate UI
-UI -> Ctrl : simpan_rating_warga(id_laporan, id_warga, skor_bintang, komentar)
+note right of UI : Form hanya tampil bila status Selesai\ndan warga belum menilai tiket ini (boleh_rating)
+UI -> Rute : POST nilai_bintang, komentar
+activate Rute
+Rute -> Ctrl : simpan_rating(id_laporan, id_warga, nilai_bintang, komentar)
 activate Ctrl
-
-Ctrl -> Lap : cek_status_selesai(id_laporan)
-activate Lap
-Lap --> Ctrl : status == "Selesai"
-deactivate Lap
-
-Ctrl -> Rat : cek_duplikat_rating(id_laporan)
-activate Rat
-Rat --> Ctrl : belum_ada_rating
-deactivate Rat
-
-alt Skor bintang tidak valid (< 1 atau > 5)
-    Ctrl --> UI : return Error "Skor rating wajib diisi (1-5)"
-    UI --> Warga : Tampilkan pesan error
-else Valid dan belum pernah memberi rating
-    Ctrl -> Rat : create(id_laporan, id_warga, skor_bintang, komentar, tanggal)
-    activate Rat
-    Rat --> Ctrl : rating_tersimpan
-    deactivate Rat
-
-    Ctrl --> UI : return Sukses
-    UI --> Warga : Tampilkan konfirmasi & perbarui tampilan ulasan
+Ctrl -> Laporan : laporan id_laporan milik warga login
+Ctrl -> WorkOrder : get(id_work_order)
+alt Laporan tidak ditemukan / milik warga lain
+    Ctrl --> Rute : "Nomor tiket laporan tidak ditemukan, ..."
+else Tiket Ditutup
+    Ctrl --> Rute : "Tiket ini ditutup tanpa perbaikan sehingga tidak dapat dinilai"
+else Tiket belum Selesai
+    Ctrl --> Rute : "Rating hanya dapat diberikan untuk laporan yang sudah Selesai"
+else Laporan ini sudah dinilai
+    Ctrl -> Rating : query id_laporan
+    Ctrl --> Rute : "Laporan ini sudah Anda beri penilaian"
+else Tiket sudah dinilai warga ini lewat laporan lain (digabung)
+    Ctrl -> Rating : join Laporan (id_work_order, id_warga)
+    Ctrl --> Rute : "Tiket penanganan ini sudah Anda beri penilaian melalui laporan <ID>. ..."
+else Bintang kosong / di luar 1-5
+    Ctrl --> Rute : "Silakan pilih bintang rating (1-5) terlebih dahulu"
+else Valid
+    Ctrl -> Rating : add Rating(id_rating = RTG-..., id_laporan, nilai_bintang,\nkomentar maks. 1000 karakter, tanggal_rating = sekarang); commit
+    Ctrl --> Rute : "Terima kasih atas ulasan dan penilaian Anda"
 end
+note right of Ctrl
+  Dijalankan lewat dengan_coba_ulang(): dua kiriman bersamaan
+  melanggar UNIQUE rating.id_laporan, diulang,
+  lalu dilaporkan "sudah Anda beri penilaian".
+end note
 deactivate Ctrl
+alt Berhasil
+    Rute --> UI : 303 ke /lacak?id=<id_laporan> + pesan flash
+    UI --> Warga : #ratingTersimpan (bintang & ulasan)
+else Gagal
+    Rute --> UI : render ulang Lacak dengan pesan peringatan (komentar dipertahankan)
+    UI --> Warga : pesan di #pesanSistem
+end
+deactivate Rute
 deactivate UI
 @enduml

@@ -1,25 +1,54 @@
 @startuml
-title Activity Diagram - UC-D: Mengelola Data Master Wilayah & Penilik Jalan
-|Admin PUPR|
+title Activity Diagram - UC-D: Kelola Data Master Wilayah & Penilik Jalan
+|Admin / Kepala Bidang|
 start
-:Membuka menu "Data Master (Wilayah & Penilik Jalan)";
+:Membuka menu "Data Master" (/master-data);
 
 |Sistem (SCMS-AI)|
-:Mengambil dan menampilkan daftar Wilayah Rayon beserta Penilik Jalan yang bertugas;
-
-|Admin PUPR|
-:Memilih aksi pengelolaan (Tambah / Ubah / Nonaktifkan Data);
-:Mengisi form data Wilayah (Nama Rayon, Kecamatan) atau data Penilik Jalan (Nama, NIP, Wilayah Tugas);
-:Klik tombol "Simpan Data";
-
-|Sistem (SCMS-AI)|
-:Memvalidasi kelengkapan input dan duplikasi kode/NIP;
-if (Data Valid & Tidak Duplikat?) then (Tidak)
-  :Menampilkan pesan error "Data tidak valid atau NIP/Kode Wilayah sudah terdaftar";
-else (Ya)
-  :Menyimpan pembaruan ke tabel Wilayah / PenilikJalan;
-  :Menampilkan pesan konfirmasi "Data master berhasil disimpan";
-  :Memperbarui tampilan tabel Data Master;
+:Menampilkan daftar Wilayah Rayon (jumlah penilik)\ndan Penilik Jalan (wilayah, ketersediaan, beban tiket aktif);
+if (Peran?) then (Kepala Bidang)
+  :Mode baca saja (form tidak ditampilkan; POST ditolak 403);
+  stop
+else (Admin)
 endif
-stop
+
+|Admin / Kepala Bidang|
+if (Aksi Admin?) then (Tambah Wilayah)
+  :Mengisi Kode Wilayah, Nama Wilayah, Kecamatan (opsional);
+  |Sistem (SCMS-AI)|
+  if (Kode & nama terisi, kode 2-20 karakter A-Z/0-9/"-",\nkode & nama belum terdaftar?) then (Tidak)
+    :Menampilkan pesan gagal\n("Data belum lengkap..." / format kode /\n"Kode Wilayah atau NIP Penilik Jalan sudah terdaftar di sistem");
+    stop
+  else (Ya)
+    :Menyimpan Wilayah;
+    :Kembali ke /master-data dengan pesan "Data master berhasil diperbarui";
+    stop
+  endif
+elseif (Tambah Penilik Jalan) then
+  :Mengisi NIP 18 digit, Nama, Wilayah, Email (opsional);
+  |Sistem (SCMS-AI)|
+  if (NIP belum terdaftar, data lengkap, wilayah ada,\nNIP 18 digit angka, email valid & belum dipakai akun lain?) then (Tidak)
+    :Menampilkan pesan gagal yang sesuai\n(isian dipertahankan);
+    stop
+  else (Ya)
+    :Membuat kata sandi sementara acak (hash bcrypt);
+    :Menyimpan Penilik Jalan (status Tersedia, aktif);
+    :Menampilkan "Data master berhasil diperbarui" dan kotak\n"Akun Penilik Jalan baru" berisi sandi sementara (sekali tampil);
+    stop
+  endif
+else (Ubah ketersediaan)
+  :Memilih status Tersedia / Penuh / Cuti untuk seorang penilik;
+  |Sistem (SCMS-AI)|
+  if (Penilik ada?) then (Tidak)
+    :HTTP 404;
+    stop
+  elseif (Status Tersedia / Penuh / Cuti?) then (Tidak)
+    :Menampilkan "Status ketersediaan tidak valid\n(pilih Tersedia, Penuh, atau Cuti)" (HTTP 400);
+    stop
+  else (Ya)
+    :Menyimpan status ketersediaan;
+    :Kembali ke /master-data dengan pesan "Data master berhasil diperbarui";
+    stop
+  endif
+endif
 @enduml
